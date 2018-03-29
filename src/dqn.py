@@ -16,6 +16,7 @@ parser.add_argument('--env-reward-weight', type=str, default=None, help='weight 
 parser.add_argument('--env-state-multiplier', type=float, default=1.0, help='state is multiplied by this value for reward estimation')
 parser.add_argument('--gpu', type=str, default="1", help='Which gpu to use')
 parser.add_argument('--REPLAY_MEMORY_SIZE', type=int, default=None, help='Replay memory size')
+parser.add_argument('--REPLAY_START_SIZE', type=int, default=None, help='Replay start size')
 parser.add_argument('--double-dqn', type=bool, default=False, help='Apply Double DQN algorithm')
 parser.add_argument('--dueling-network', type=bool, default=False, help='Apply Dueling Network architecture')
 parser.add_argument('--actor-critic', type=bool, default=False, help='Use actor-critic method')
@@ -40,7 +41,7 @@ ENABLE_RENDER = args.enable_render
 
 from keras.models import Sequential, Model
 from keras.layers import Dense, Activation, Flatten, Convolution2D, Permute, Conv2D, ZeroPadding2D, Input, Add, Subtract, RepeatVector, Lambda
-from keras.optimizers import Adam
+from keras.optimizers import Adam, RMSprop
 from dqn_rmsprop import MyRMSprop
 import keras.backend as K
 from keras.utils import to_categorical
@@ -90,7 +91,10 @@ SAVE_FREQ=20000
 if not args.REPLAY_MEMORY_SIZE is None:
 	REPLAY_MEMORY_SIZE = args.REPLAY_MEMORY_SIZE
 
-print(REPLAY_MEMORY_SIZE)
+if not args.REPLAY_START_SIZE is None:
+	REPLAY_START_SIZE = args.REPLAY_START_SIZE
+	
+print(REPLAY_MEMORY_SIZE, REPLAY_START_SIZE)
 
 class RandomAgent(object):
 	def __init__(self, action_space):
@@ -206,6 +210,7 @@ def my_uniform(seed=None):
                            seed=seed)
 
 my_optimizer = MyRMSprop(lr=LEARNING_RATE, rho1=GRADIENT_MOMENTUM, rho2=SQUARED_GRADIENT_MOMENTUM, epsilon=MIN_SQUARED_GRADIENT, print_layer=9 if not args.torch_compare_path is None else -1)
+my_optimizer_critic = MyRMSprop(lr=LEARNING_RATE, rho1=GRADIENT_MOMENTUM, rho2=SQUARED_GRADIENT_MOMENTUM, epsilon=MIN_SQUARED_GRADIENT, print_layer=9 if not args.torch_compare_path is None else -1)
 
 def my_mean(x, ACTION_COUNT):
 	x = K.mean(x, axis=1, keepdims=True)
@@ -243,30 +248,62 @@ def get_model():
 		x = Dense(512,activation="relu", kernel_initializer=my_uniform())(x)
 		pi = Dense(ACTION_COUNT,activation="softmax", kernel_initializer=my_uniform())(x)
 		V = Dense(1, kernel_initializer=my_uniform())(x)
-		a_t = K.placeholder(shape=(None, ACTION_COUNT))
-		R = K.placeholder(shape=(None, 1))
-		A = R - V
-		
-		def get_ac_loss(pi, a_t, A):
-			def loss_actor(y_true, y_pred):
-				Lpi = K.log(K.sum(y_pred*a_t)) * K.stop_gradient(A)
-				LH = K.sum(y_pred * K.log(y_pred))
-				L = Lpi + 0.01 * LH
-				return L
-			def loss_critic(y_true, y_pred):
-				Lv = 0.5 * K.mean(K.square(y_true - y_pred))
-				return Lv
-			return loss_actor, loss_critic
-		actor_loss, critic_loss = get_ac_loss(pi, a_t, A)
+		#a_t = K.placeholder(shape=(None, ACTION_COUNT))
+		#R = K.placeholder(shape=(None, 1))
+		#A = R - V
+		#def get_ac_loss(pi, a_t, A):
+		#	def loss_actor(y_true, y_pred):
+		#		Lpi = K.log(K.sum(y_pred*a_t)) * K.stop_gradient(A)
+		#		LH = K.sum(y_pred * K.log(y_pred))
+		#		L = Lpi + 0.01 * LH
+		#		return L
+		#	def loss_critic(y_true, y_pred):
+		#		Lv = 0.5 * K.mean(K.square(y_true - y_pred))
+		#		return Lv
+		#	return loss_actor, huber_loss #loss_critic
+		#actor_loss, critic_loss = get_ac_loss(pi, a_t, A)
 
-		model = Model(inputs=[input], outputs=[pi, V])
-		model.compile(optimizer=my_optimizer,loss=[actor_loss, critic_loss]) 
+		def actor_optimizer():
+			a_t = K.placeholder(shape=[None, ACTION_COUNT])
+			A = K.placeholder(shape=[None, 1])
+			policy = model_actor.output
+			Lpi = -K.sum(K.log(K.sum(policy*a_t, axis=1) + 1e-10) * A)
+			LH = K.sum(K.sum(pi * K.log(policy + 1e-10), axis=1))
+			L = Lpi + 0.01 * LH
+			
+			#optimizer = RMSprop(lr=2.5e-4, rho=0.99, epsilon=0.01)
+			optimizer = my_optimizer
+			updates = optimizer.get_updates(model_actor.trainable_weights, [], L)
+			train = K.function([model_actor.input, a_t, A], [L], updates=updates)
+			return train
+		def critic_optimizer():
+			R = K.placeholder(shape=[None, 1])
+			critic = model_critic.output
+			Lv = 0.5 * K.mean(K.square(R - critic))
+			Lv = K.sum(Lv)
+			#optimizer = RMSprop(lr=2.5e-4, rho=0.99, epsilon=0.01)
+			optimizer = my_optimizer_critic
+			updates = optimizer.get_updates(model_critic.trainable_weights, [], Lv)
+			train = K.function([model_critic.input, R], [Lv], updates=updates)
+			return train		
+		model_actor = Model(inputs=[input], outputs=[pi])
+		model_critic = Model(inputs=[input], outputs=[V])
+		model_actor._make_predict_function()
+		model_critic._make_predict_function()
+		model = model_actor
+		model.critic = model_critic
+		model_actor.manual_optimizer = actor_optimizer()
+		model_critic.manual_optimizer = critic_optimizer()
+		
+		#model = Model(inputs=[input], outputs=[pi, V])
+		#model.compile(optimizer=my_optimizer,loss=[actor_loss, critic_loss]) 
+		#model.my_at = a_t
+		#model.my_r = R
 		
 	model_layer = Model(inputs=model.input, outputs=model.get_layer('layer3').output)
 	return model, model_layer
 
-def get_actor_critic_loss(pi, A)
-	
+
 from torch_utils import *
 	
 def clone_model(model):
@@ -336,19 +373,28 @@ while True:
 	action = agent.act(ob, reward, done)
 	#if total_step_count<=FINAL_EXPLORATION_FRAME and args.mode == "train":
 	#	action = np.random.choice(range(ACTION_COUNT), p=[0.30, 0.40, 0.30])
-	if (total_step_count > REPLAY_START_SIZE) or args.mode == "test":
-		epsilon = (INITIAL_EXPLORATION-FINAL_EXPLORATION) * max(FINAL_EXPLORATION_FRAME-total_step_count, 0) / (FINAL_EXPLORATION_FRAME-REPLAY_START_SIZE) + FINAL_EXPLORATION
-		if args.mode == "test":
-			epsilon = args.test_epsilon
-		if epsilon < random.random():
-			if step_count>=AGENT_HISTORY_LENGTH:
-				lastItems = replay_buffer.getLastItems(AGENT_HISTORY_LENGTH)
-				lastFrames = [a['current_state'] for a in lastItems]
-				lastFrames = lastFrames[1:]
-				lastFrames.append(lastItems[-1]['next_state'])
-				prediction = model.predict_on_batch(np.array([lastFrames], dtype='f')/255.0)[0]
-				# @diff: random tie breaking
-				action = np.argmax(prediction)
+	if args.actor_critic:
+		if step_count>=AGENT_HISTORY_LENGTH and ( (total_step_count > REPLAY_START_SIZE) or args.mode == "test"):
+			lastItems = replay_buffer.getLastItems(AGENT_HISTORY_LENGTH)
+			lastFrames = [a['current_state'] for a in lastItems]
+			lastFrames = lastFrames[1:]
+			lastFrames.append(lastItems[-1]['next_state'])
+			prediction = model.predict_on_batch(np.array([lastFrames], dtype='f')/255.0)[0]
+			action = np.random.choice(range(ACTION_COUNT), p=prediction)
+	else:
+		if (total_step_count > REPLAY_START_SIZE) or args.mode == "test":
+			epsilon = (INITIAL_EXPLORATION-FINAL_EXPLORATION) * max(FINAL_EXPLORATION_FRAME-total_step_count, 0) / (FINAL_EXPLORATION_FRAME-REPLAY_START_SIZE) + FINAL_EXPLORATION
+			if args.mode == "test":
+				epsilon = args.test_epsilon
+			if epsilon < random.random():
+				if step_count>=AGENT_HISTORY_LENGTH:
+					lastItems = replay_buffer.getLastItems(AGENT_HISTORY_LENGTH)
+					lastFrames = [a['current_state'] for a in lastItems]
+					lastFrames = lastFrames[1:]
+					lastFrames.append(lastItems[-1]['next_state'])
+					prediction = model.predict_on_batch(np.array([lastFrames], dtype='f')/255.0)[0]
+					# @diff: random tie breaking
+					action = np.argmax(prediction)
 				
 
 	ob, reward, done = gameStep(action)
@@ -378,6 +424,7 @@ while True:
 			current_state = np.zeros((MINIBATCH_SIZE,AGENT_HISTORY_LENGTH)+INPUT_SIZE, dtype='f')
 			next_state = np.zeros((MINIBATCH_SIZE,AGENT_HISTORY_LENGTH)+INPUT_SIZE, dtype='f')
 			rewards = np.zeros((MINIBATCH_SIZE,), dtype='f')
+			reward_action = np.zeros((MINIBATCH_SIZE,ACTION_COUNT), dtype='f')
 			index_map = range(MINIBATCH_SIZE)
 				
 			for I in xrange(MINIBATCH_SIZE):
@@ -388,11 +435,11 @@ while True:
 				lastFrames.append(nextFrame)
 				current_state[I] = np.array(lastFrames[:-1], dtype='f')/255.0
 				next_state[I] = np.array(lastFrames[1:], dtype='f')/255.0  
+				reward_action[I] = np.array(to_categorical(lastItems[-1]['action'],num_classes=ACTION_COUNT), dtype='f').flatten().squeeze().reshape((1, ACTION_COUNT))
 			if not model_env is None:
 				current_obs = np.zeros((MINIBATCH_SIZE,AGENT_HISTORY_LENGTH*3)+(210,160), dtype='f')
 				next_obs = np.zeros((MINIBATCH_SIZE,AGENT_HISTORY_LENGTH*3)+(210,160), dtype='f')
 				actions = np.zeros((MINIBATCH_SIZE,AGENT_HISTORY_LENGTH*ACTION_COUNT), dtype='f')
-				reward_action = np.zeros((MINIBATCH_SIZE,ACTION_COUNT), dtype='f')
 				for I in xrange(MINIBATCH_SIZE):
 					lastItems = replay_buffer.getItems(samples[I], AGENT_HISTORY_LENGTH)
 					lastFramesOrig = [a['current_state_orig'] for a in lastItems]
@@ -400,7 +447,6 @@ while True:
 					current_obs[I] = get_obs_input(lastFramesOrig[:-1], meanImage)
 					next_obs[I] = get_obs_input(lastFramesOrig[1:], meanImage)
 					actions[I,:] = np.array([to_categorical(a['action'],num_classes=ACTION_COUNT) for a in lastItems], dtype='f').flatten().squeeze().reshape((1, ACTION_COUNT*AGENT_HISTORY_LENGTH))
-					reward_action[I] = np.array(to_categorical(lastItems[-1]['action'],num_classes=ACTION_COUNT), dtype='f').flatten().squeeze().reshape((1, ACTION_COUNT))
 				
 				prediction = my_predict(model_env, current_obs, next_obs, actions)
 				for I in xrange(MINIBATCH_SIZE):
@@ -408,13 +454,20 @@ while True:
 					tmp1, _ = preprocess(tmp1)
 					next_state[I,-1] = np.array(tmp1, dtype='f')/255.0  
 				
-			target = model.predict(current_state)
-			next_value = model_eval.predict(next_state)
-			if args.double_dqn:
-				next_best_res = model.predict(next_state)
-				best_acts = np.argmax(next_best_res, axis=1)
+			if not args.actor_critic:
+				target = model.predict(current_state)
 			else:
-				best_acts = np.argmax(next_value, axis=1)
+				target = model.critic.predict(current_state)
+				discounted_return = np.zeros((MINIBATCH_SIZE,1), dtype='f')
+			if not args.actor_critic:
+				next_value = model_eval.predict(next_state)
+				if args.double_dqn:
+					next_best_res = model.predict(next_state)
+					best_acts = np.argmax(next_best_res, axis=1)
+				else:
+					best_acts = np.argmax(next_value, axis=1)
+			else:
+				next_value = model.critic.predict(next_state)
 				
 			#if total_step_count % 3000 == 0:
 			#	print(next_value)
@@ -423,15 +476,31 @@ while True:
 				transition = lastItems[-1]
 				action = transition['action']
 				reward = transition['reward']
-				if transition['done']:
-					target[I,action] = reward
+				if not args.actor_critic:
+					if transition['done']:
+						target[I,action] = reward
+					else:
+						#target[I,action] = reward + DISCOUNT_FACTOR * np.max(next_value[I,:]) #index_map[I]
+						target[I,action] = reward + DISCOUNT_FACTOR * next_value[I,best_acts[I]]   #after double DQN
 				else:
-					#target[I,action] = reward + DISCOUNT_FACTOR * np.max(next_value[I,:]) #index_map[I]
-					target[I,action] = reward + DISCOUNT_FACTOR * next_value[I,best_acts[I]]   #after double DQN
-			res = model.train_on_batch(current_state, target)
+					if transition['done']:
+						discounted_return[I] = reward
+					else:
+						discounted_return[I] = reward + DISCOUNT_FACTOR * next_value[I]
+					
+			if not args.actor_critic:
+				res = model.train_on_batch(current_state, target)
+				print res
+			else:
+				loss1 = model.manual_optimizer([current_state, reward_action, discounted_return - target])
+				loss2 = model.critic.manual_optimizer([current_state, discounted_return])
+				loss1 = loss1[0]
+				loss2 = loss2[0]
+				res = [loss1 + loss2, loss1, loss2]
+				#print res
 			#print(res)
 			losses.append(res)
-	if total_step_count%10000 == 0 and args.mode == "train":
+	if total_step_count%1000 == 0 and args.mode == "train":
 		if not args.output_dir is None:
 			np.savetxt(args.output_dir + '/losses.txt', losses)
 				
