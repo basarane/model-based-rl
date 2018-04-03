@@ -218,16 +218,17 @@ def my_mean(x, ACTION_COUNT):
 	return x
 
 def get_model():
-	input_shape=(AGENT_HISTORY_LENGTH,) + INPUT_SIZE
-	input = Input(shape=input_shape, name='observation')
-	x = Permute((2,3,1))(input)
-	x = ZeroPadding2D(padding=((1,0),(1,0)), name='layer1_padding')(x)
-	x = Conv2D(filters=32,kernel_size=8,strides=4,padding="valid",activation="relu", kernel_initializer=my_uniform(), name='layer1')(x)
-	x = Conv2D(filters=64,kernel_size=4,strides=2,padding="valid",activation="relu", kernel_initializer=my_uniform(), name='layer2')(x)
-	x = Conv2D(filters=64,kernel_size=3,strides=1,padding="valid",activation="relu", kernel_initializer=my_uniform(), name='layer3')(x)
-	x = Permute((3,1,2))(x)
-	x = Flatten()(x)
+	
 	if not args.actor_critic:
+		input_shape=(AGENT_HISTORY_LENGTH,) + INPUT_SIZE
+		input = Input(shape=input_shape, name='observation')
+		x = Permute((2,3,1))(input)
+		x = ZeroPadding2D(padding=((1,0),(1,0)), name='layer1_padding')(x)
+		x = Conv2D(filters=32,kernel_size=8,strides=4,padding="valid",activation="relu", kernel_initializer=my_uniform(), name='layer1')(x)
+		x = Conv2D(filters=64,kernel_size=4,strides=2,padding="valid",activation="relu", kernel_initializer=my_uniform(), name='layer2')(x)
+		x = Conv2D(filters=64,kernel_size=3,strides=1,padding="valid",activation="relu", kernel_initializer=my_uniform(), name='layer3')(x)
+		x = Permute((3,1,2))(x)
+		x = Flatten()(x)
 		if not args.dueling_network:
 			x = Dense(512,activation="relu", kernel_initializer=my_uniform())(x)
 			y = Dense(ACTION_COUNT, kernel_initializer=my_uniform())(x)
@@ -245,9 +246,16 @@ def get_model():
 		model.compile(optimizer=my_optimizer,loss=huber_loss) #
 		#model.compile(optimizer=keras.optimizers.Adam(lr=LEARNING_RATE),loss='mse')
 	else:
-		x = Dense(512,activation="relu", kernel_initializer=my_uniform())(x)
-		pi = Dense(ACTION_COUNT,activation="softmax", kernel_initializer=my_uniform())(x)
-		V = Dense(1, kernel_initializer=my_uniform())(x)
+		input_shape= INPUT_SIZE + (AGENT_HISTORY_LENGTH,)
+		input = Input(shape=input_shape, name='observation')
+		x = input
+		x = Conv2D(filters=16,kernel_size=8,strides=4,padding="valid",activation="relu", name='layer1')(x)
+		x = Conv2D(filters=32,kernel_size=4,strides=2,padding="valid",activation="relu", name='layer2')(x)
+		#x = Permute((3,1,2))(x)
+		x = Flatten()(x)
+		x = Dense(256,activation="relu")(x)
+		pi = Dense(ACTION_COUNT,activation="softmax")(x)
+		V = Dense(1)(x)
 		#a_t = K.placeholder(shape=(None, ACTION_COUNT))
 		#R = K.placeholder(shape=(None, 1))
 		#A = R - V
@@ -265,27 +273,62 @@ def get_model():
 
 		def actor_optimizer():
 			a_t = K.placeholder(shape=[None, ACTION_COUNT])
-			A = K.placeholder(shape=[None, 1])
+			A = K.placeholder(shape=(None, ))
 			policy = model_actor.output
 			Lpi = -K.sum(K.log(K.sum(policy*a_t, axis=1) + 1e-10) * A)
 			LH = K.sum(K.sum(pi * K.log(policy + 1e-10), axis=1))
 			L = Lpi + 0.01 * LH
 			
-			#optimizer = RMSprop(lr=2.5e-4, rho=0.99, epsilon=0.01)
-			optimizer = my_optimizer
+			optimizer = RMSprop(lr=2.5e-4, rho=0.99, epsilon=0.01)
+			#optimizer = my_optimizer
 			updates = optimizer.get_updates(model_actor.trainable_weights, [], L)
 			train = K.function([model_actor.input, a_t, A], [L], updates=updates)
 			return train
 		def critic_optimizer():
-			R = K.placeholder(shape=[None, 1])
+			R = K.placeholder(shape=(None,))
 			critic = model_critic.output
-			Lv = 0.5 * K.mean(K.square(R - critic))
+			critic = K.print_tensor(critic, message='critic: ')
+			Lv = K.mean(K.square(R - critic))
 			Lv = K.sum(Lv)
-			#optimizer = RMSprop(lr=2.5e-4, rho=0.99, epsilon=0.01)
-			optimizer = my_optimizer_critic
+			Lv = K.print_tensor(Lv, message='Lv: ')
+			optimizer = RMSprop(lr=2.5e-4, rho=0.99, epsilon=0.01)
+			#optimizer = my_optimizer_critic
 			updates = optimizer.get_updates(model_critic.trainable_weights, [], Lv)
 			train = K.function([model_critic.input, R], [Lv], updates=updates)
 			return train		
+		#def actor_optimizer():
+		#	action = K.placeholder(shape=[None, ACTION_COUNT])
+		#	advantages = K.placeholder(shape=[None, ])
+        #
+		#	policy = model_actor.output
+        #
+		#	good_prob = K.sum(action * policy, axis=1)
+		#	eligibility = K.log(good_prob + 1e-10) * advantages
+		#	actor_loss = -K.sum(eligibility)
+        #
+		#	entropy = K.sum(policy * K.log(policy + 1e-10), axis=1)
+		#	entropy = K.sum(entropy)
+        #
+		#	loss = actor_loss + 0.01*entropy
+		#	optimizer = RMSprop(lr=2.5e-4, rho=0.99, epsilon=0.01)
+		#	updates = optimizer.get_updates(model_actor.trainable_weights, [], loss)
+		#	train = K.function([model_actor.input, action, advantages], [loss], updates=updates)
+        #
+		#	return train
+        
+		# make loss function for Value approximation
+		#def critic_optimizer():
+		#	discounted_reward = K.placeholder(shape=(None, ))
+        #
+		#	value = model_critic.output
+		#	value = K.print_tensor(value, message='critic: ')
+		#	loss = K.mean(K.square(discounted_reward - value))
+		#	loss = K.print_tensor(loss, message='Lv: ')
+        #
+		#	optimizer = RMSprop(lr=2.5e-4, rho=0.99, epsilon=0.01)
+		#	updates = optimizer.get_updates(model_critic.trainable_weights, [], loss)
+		#	train = K.function([model_critic.input, discounted_reward], [loss], updates=updates)
+		#	return train		
 		model_actor = Model(inputs=[input], outputs=[pi])
 		model_critic = Model(inputs=[input], outputs=[V])
 		model_actor._make_predict_function()
@@ -300,7 +343,7 @@ def get_model():
 		#model.my_at = a_t
 		#model.my_r = R
 		
-	model_layer = Model(inputs=model.input, outputs=model.get_layer('layer3').output)
+	model_layer = Model(inputs=model.input, outputs=model.get_layer('layer1').output)
 	return model, model_layer
 
 
@@ -326,6 +369,24 @@ if not args.torch_compare_path is None:
 	from torch_compare import torch_compare
 	torch_compare(args.torch_compare_path, ACTION_COUNT, model, model_eval, MINIBATCH_SIZE,AGENT_HISTORY_LENGTH, INPUT_SIZE, DISCOUNT_FACTOR)
 
+if True:
+	model.load_weights('../rlcode/actor.h5')
+	model.critic.load_weights('../rlcode/critic.h5')
+	history = np.load('../rlcode/history.npy')
+	policy = model.predict(history)[0]
+	print(policy)
+	states = np.load('../rlcode/states.npy')
+	actions = np.load('../rlcode/actions.npy')
+	advantages = np.load('../rlcode/advantages.npy')
+	discounted_rewards = np.load('../rlcode/discounted_rewards.npy')
+
+	loss1 = model.manual_optimizer([states, actions, advantages])
+	loss2 = model.critic.manual_optimizer([states, discounted_rewards])
+	print('R', discounted_rewards)
+	print(loss1, loss2)
+	
+	sys.exit()
+	
 if not args.last_weightfile is None:
 	model.load_weights(args.last_weightfile)
 	
@@ -458,7 +519,7 @@ while True:
 				target = model.predict(current_state)
 			else:
 				target = model.critic.predict(current_state)
-				discounted_return = np.zeros((MINIBATCH_SIZE,1), dtype='f')
+				discounted_return = np.zeros((MINIBATCH_SIZE,), dtype='f')
 			if not args.actor_critic:
 				next_value = model_eval.predict(next_state)
 				if args.double_dqn:
@@ -492,8 +553,11 @@ while True:
 				res = model.train_on_batch(current_state, target)
 				print res
 			else:
+				target = np.reshape(target, (target.shape[0],))
 				loss1 = model.manual_optimizer([current_state, reward_action, discounted_return - target])
 				loss2 = model.critic.manual_optimizer([current_state, discounted_return])
+				print('R', discounted_return)
+				print(loss1, loss2)
 				loss1 = loss1[0]
 				loss2 = loss2[0]
 				res = [loss1 + loss2, loss1, loss2]
