@@ -88,9 +88,22 @@ class ReplayBuffer(RunnerListener, BaseSampler):
 		self.buffer = SequentialMemory(max_size=REPLAY_MEMORY_SIZE)
 	def on_step(self, ob, action, next_ob, reward, done):
 		self.buffer.append(ob, action, next_ob, reward, done)
-	def get_sample(self, N):
+	def get_sample(self, N, seq_length):
 		samples = self.buffer.samples(N, skewed_sampling = False)
-		return self.buffer[samples]
+		a = []
+		for s in samples:
+			x = self.buffer.getItems(s, seq_length)
+			next_state = [b['current_state'] for b in x[1:]]
+			next_state.append(x[-1]['next_state'])
+			a.append({
+				'current_state': [b['current_state'] for b in x],
+				'action': x[-1]['action'],
+				'next_state': next_state,
+				'reward': x[-1]['reward'],
+				'done': x[-1]['done']
+			})
+		return a
+		#return self.buffer[samples]
 		
 if __name__ == "__main__":
 	#buffer = RingBuffer(1000000)

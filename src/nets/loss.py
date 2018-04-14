@@ -6,6 +6,7 @@ if K.backend() == 'tensorflow':
 elif K.backend() == 'theano':
 	from theano import tensor as T
 
+# adapted from keras-rl: https://github.com/keras-rl/keras-rl/blob/master/rl/util.py
 def huber_loss(y_true, y_pred):
 	clip_value = 1
 	# Huber loss, see https://en.wikipedia.org/wiki/Huber_loss and

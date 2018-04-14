@@ -62,10 +62,10 @@ import random
 
 from models import load_model
 from models import my_predict
-from utils import toRGBImage
-from utils import prediction_to_image
-from utils import draw_reward
-from utils import get_obs_input
+from utils_old import toRGBImage
+from utils_old import prediction_to_image
+from utils_old import draw_reward
+from utils_old import get_obs_input
 
 INPUT_SIZE=(84,84)
 MINIBATCH_SIZE=32
@@ -369,7 +369,7 @@ if not args.torch_compare_path is None:
 	from torch_compare import torch_compare
 	torch_compare(args.torch_compare_path, ACTION_COUNT, model, model_eval, MINIBATCH_SIZE,AGENT_HISTORY_LENGTH, INPUT_SIZE, DISCOUNT_FACTOR)
 
-if True:
+if False:
 	model.load_weights('../rlcode/actor.h5')
 	model.critic.load_weights('../rlcode/critic.h5')
 	history = np.load('../rlcode/history.npy')

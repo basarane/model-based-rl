@@ -1,9 +1,20 @@
 from initializers import dqn_uniform
-from keras.layers import Input, Permute, ZeroPadding2D, Conv2D, Flatten, Dense, Add, Subtract
+from keras.layers import Input, Permute, ZeroPadding2D, Conv2D, Flatten, Dense, Add, Subtract, Lambda
 from keras import Model
 from optimizers import DqnRMSprop
 from loss import huber_loss
 import numpy as np
+import keras.backend as K
+
+def init_nn_library(use_gpu = True, gpu_id = "0", memory_fraction = 0.3):
+	if use_gpu:
+		import tensorflow as tf
+		from keras.backend.tensorflow_backend import set_session
+		config = tf.ConfigProto(log_device_placement=False)
+		config.gpu_options.per_process_gpu_memory_fraction = memory_fraction
+		config.gpu_options.allow_growth = True
+		config.gpu_options.visible_device_list = gpu_id
+		set_session(tf.Session(config=config))
 
 class DqnOps(object):
 	def __init__(self, action_count):
@@ -41,6 +52,11 @@ class QModel(object):
 		raise NotImplementedException()
 	
 	
+def my_mean(x, ACTION_COUNT):
+	x = K.mean(x, axis=1, keepdims=True)
+	x = K.tile(x, (1,ACTION_COUNT))
+	return x
+	
 class DQNModel(QModel):
 	def __init__(self, ops = None, model = None):
 		super(DQNModel, self).__init__(ops, model)
@@ -58,14 +74,15 @@ class DQNModel(QModel):
 			x = Dense(512,activation="relu", kernel_initializer=dqn_uniform())(x)
 			y = Dense(self.ops.ACTION_COUNT, kernel_initializer=dqn_uniform())(x)
 		else:
-			xv = Dense(512,activation="relu", kernel_initializer=dqn_uniform())(x)
-			xa = Dense(512,activation="relu", kernel_initializer=dqn_uniform())(x)
-			v = Dense(1, kernel_initializer=dqn_uniform())(xv) #,activation="relu"
-			a = Dense(self.ops.ACTION_COUNT, kernel_initializer=dqn_uniform())(xa) #,activation="relu"
-			ma = Lambda(my_mean, arguments={'self.ops.ACTION_COUNT': self.ops.ACTION_COUNT})(a)
-			y1 = Add()([v, a])
-			y = Subtract()([y1, ma])
+			xv = Dense(512,activation="relu", kernel_initializer=dqn_uniform(), name="dense_v")(x)
+			xa = Dense(512,activation="relu", kernel_initializer=dqn_uniform(), name="dense_a")(x)
+			v = Dense(1, kernel_initializer=dqn_uniform(), name="v")(xv) #,activation="relu"
+			a = Dense(self.ops.ACTION_COUNT, kernel_initializer=dqn_uniform(), name="a")(xa) #,activation="relu"
+			ma = Lambda(my_mean, arguments={'ACTION_COUNT': self.ops.ACTION_COUNT}, name="mean_a")(a)
+			y1 = Add(name="v_plus_a")([v, a])
+			y = Subtract(name="q_value")([y1, ma])
 		model = Model(inputs=[input], outputs=[y])
+		model.summary()
 		#model.compile(optimizer=keras.optimizers.Adam(lr=LEARNING_RATE),loss=huber_loss)
 		my_optimizer = DqnRMSprop(lr=self.ops.LEARNING_RATE, rho1=self.ops.GRADIENT_MOMENTUM, rho2=self.ops.SQUARED_GRADIENT_MOMENTUM, epsilon=self.ops.MIN_SQUARED_GRADIENT, print_layer=-1)
 		model.compile(optimizer=my_optimizer,loss=huber_loss) #
