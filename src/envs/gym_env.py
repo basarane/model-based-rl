@@ -12,6 +12,10 @@ class gym_env(Env):
 		return self.env.action_space
 	
 	@property
+	def observation_space(self):
+		return self.env.observation_space
+
+	@property
 	def action_count(self):
 		return self.env.action_space.n
 		

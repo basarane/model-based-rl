@@ -5,6 +5,8 @@ import numpy as np
 from PIL import Image
 import sys
 
+from utils.summary_writer import SummaryWriter
+
 class Agent(object):
 	def __init__(self, action_space, ops):
 		self.action_space = action_space
@@ -27,22 +29,23 @@ class DqnAgentOps(object):
 		self.INITIAL_EXPLORATION = 1.0
 		self.FINAL_EXPLORATION = 0.1
 		self.FINAL_EXPLORATION_FRAME = 1e6
-		self.UPDATE_FREQUENCY = 4
 		self.MINIBATCH_SIZE = 32
 		self.DISCOUNT_FACTOR = 0.99
 		self.TARGET_NETWORK_UPDATE_FREQUENCY=1e4
-		self.AGENT_HISTORY_LENGTH = 4
 		
 class DqnAgent(Agent, RunnerListener):
-	def __init__(self, action_space, q_model, sampler, rewproc, ops):
+	def __init__(self, action_space, q_model, sampler, rewproc, ops, sw = None, model_eval=None):
 		super(DqnAgent, self).__init__(action_space, ops)
-		print('REPLAY STATER', ops.REPLAY_START_SIZE)
 		self.q_model = q_model
-		self.q_model_eval = q_model.clone()
+		if model_eval is not None:
+			self.q_model_eval = model_eval
+		else:
+			self.q_model_eval = q_model.clone()
 		self.sampler = sampler
 		self.total_step_count = 0
 		self.losses = []
 		self.rewproc = rewproc
+		self.sw = SummaryWriter(sw, ['Episode reward', 'Loss per batch'])
 	def act(self, observation):
 		action = self.action_space.sample()
 		if (self.total_step_count > self.ops.REPLAY_START_SIZE) or self.ops.mode == "test":
@@ -56,9 +59,8 @@ class DqnAgent(Agent, RunnerListener):
 		
 	def on_step(self, ob, action, next_ob, reward, done):
 		self.total_step_count += 1
-		#print(self.ops.UPDATE_FREQUENCY, self.total_step_count, self.ops.REPLAY_START_SIZE)
-		if self.total_step_count % self.ops.UPDATE_FREQUENCY == 0 and self.total_step_count>self.ops.REPLAY_START_SIZE:
-			samples = self.sampler.get_sample(self.ops.MINIBATCH_SIZE, self.ops.AGENT_HISTORY_LENGTH)
+		if self.sampler.has_sample():
+			samples = self.sampler.get_sample()
 			current_states = [a['current_state'] for a in samples]
 			next_states = [a['next_state'] for a in samples]
 			
@@ -71,21 +73,35 @@ class DqnAgent(Agent, RunnerListener):
 			else:
 				best_acts = np.argmax(next_value, axis=1)
 			
-			for I in xrange(self.ops.MINIBATCH_SIZE):
+			R = 0
+			for I in reversed(xrange(len(samples))):
 				transition = samples[I]
 				action = transition['action']
 				reward = transition['reward']
 				if self.rewproc is not None:
 					reward = self.rewproc.preprocess(reward)
+				if (self.sampler.nstep() and I==len(samples)-1) or not self.sampler.nstep():
+					R = next_value[I,best_acts[I]]
 				if transition['done']:
-					target[I,action] = reward
+					R = reward
 				else:
-					target[I,action] = reward + self.ops.DISCOUNT_FACTOR * next_value[I,best_acts[I]]   #after double DQN
+					R = reward + self.ops.DISCOUNT_FACTOR * R   #after double DQN
+				target[I,action] = R
 			res = self.q_model.q_update(current_states, target)
 			self.losses.append(res)
-		if self.total_step_count % self.ops.TARGET_NETWORK_UPDATE_FREQUENCY == 1 and self.ops.mode == "train":
+			self.update_count += 1
+		if self.total_step_count % self.ops.TARGET_NETWORK_UPDATE_FREQUENCY == 0 and self.ops.mode == "train":
 			self.q_model_eval.set_weights(self.q_model.get_weights())
+	def on_episode_start(self):
+		self.update_count = 0
 	def on_episode_end(self, reward, step_count):
-		x = np.array(self.losses)
-		print('Episode end', reward, step_count, self.total_step_count, x.sum() / step_count)
+		if len(self.losses)>0:
+			x = np.array(self.losses)
+			aver_loss = x.sum() / self.update_count
+		else:
+			aver_loss = 0
+		print('Episode end', reward, step_count, self.total_step_count, aver_loss)
+		self.update_count = 0
+		self.sw.add([reward, aver_loss], self.total_step_count)
 		self.losses = []
+

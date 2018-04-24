@@ -17,10 +17,12 @@ class Runner(object):
 		self.listeners = []
 		self.agent_preproc = agent_preproc 
 		self.agent_step_count = agent_step_count
-		
+		self.stopped = False
+	def stop(self):
+		self.stopped = True
 	def run(self):
 		self.total_step_count = 0
-		while True:
+		while not self.stopped:
 			ob = self.env.reset()
 			[a['listener'].on_episode_start() for a in self.listeners]
 			self.episode_reward = 0
@@ -29,7 +31,7 @@ class Runner(object):
 			next_ob_procs = {}
 			
 			obs = []
-			while True:
+			while not self.stopped:
 				if not self.agent_preproc is None:
 					if not id(self.agent_preproc) in ob_procs:
 						ob_procs[id(self.agent_preproc)] = self.agent_preproc.preprocess(ob)
@@ -64,7 +66,7 @@ class Runner(object):
 				self.step_count = self.step_count + 1
 				ob = next_ob
 				ob_procs = next_ob_procs
-				next_ob_procs = {}				
+				next_ob_procs = {}
 				if done:
 					[a['listener'].on_episode_end(self.episode_reward, self.step_count) for a in self.listeners]
 					break
