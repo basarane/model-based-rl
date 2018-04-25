@@ -15,7 +15,7 @@ from envs.gym_env import gym_env
 from envs.env_transform import WarmUp, ActionRepeat, ObservationStack
 from utils.preprocess import *
 from runner.runner import Runner
-from agents.agent import DqnAgent, DqnAgentOps
+from agents.agent import DqnAgent, DqnAgentOps, EGreedyOps, EGreedyAgent
 from utils.memory import ReplayBuffer, NStepBuffer
 from nets.net import TabularQModel, DqnOps, init_nn_library
 import tensorflow as tf
@@ -43,14 +43,18 @@ summary_writer = tf.summary.FileWriter(args.logdir, K.get_session().graph) if no
 
 agentOps = DqnAgentOps()
 agentOps.double_dqn = args.double_dqn
-agentOps.REPLAY_START_SIZE = 1
-agentOps.FINAL_EXPLORATION_FRAME = 10000
 
 replay_buffer = NStepBuffer(1, args.nstep)
 agent = DqnAgent(env.action_space, q_model, replay_buffer, None, agentOps, summary_writer)
 
-runner = Runner(env, agent, None, 1)
+egreedyOps = EGreedyOps()
+egreedyOps.REPLAY_START_SIZE = 1
+egreedyOps.FINAL_EXPLORATION_FRAME = 10000
+egreedyAgent = EGreedyAgent(env.action_space, egreedyOps, agent)
+
+runner = Runner(env, egreedyAgent, None, 1)
 runner.listen(replay_buffer, None)
 runner.listen(agent, None)
+runner.listen(egreedyAgent, None)
 
 runner.run()

@@ -41,13 +41,19 @@ agentOps.double_dqn = args.double_dqn
 #agentOps.REPLAY_START_SIZE = 100
 #agentOps.FINAL_EXPLORATION_FRAME = 10000
 
-replay_buffer = ReplayBuffer(int(1e6), 4, 4, agentOps.REPLAY_START_SIZE, 32)
+replay_buffer = ReplayBuffer(int(1e6), 4, 4, 50000, 32)
 #replay_buffer = NStepBuffer(modelOps.AGENT_HISTORY_LENGTH, 8)
 agent = DqnAgent(env.action_space, q_model, replay_buffer, rewproc, agentOps, summary_writer)
 
-runner = Runner(env, agent, proproc, 4)
+egreedyOps = EGreedyOps()
+egreedyOps.REPLAY_START_SIZE = replay_buffer.REPLAY_START_SIZE
+#egreedyOps.FINAL_EXPLORATION_FRAME = 10000
+egreedyAgent = EGreedyAgent(env.action_space, egreedyOps, agent)
+
+runner = Runner(env, egreedyAgent, proproc, 4)
 runner.listen(replay_buffer, proproc)
-runner.listen(agent, proproc)
+runner.listen(agent, None)
+runner.listen(egreedyAgent, None)
 
 if args.logdir is not None:
 	networkSaver = NetworkSaver(50000, args.logdir, q_model.model)
