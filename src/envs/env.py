@@ -21,6 +21,9 @@ class Env(object):
 	def step(self, action):
 		raise NotImplementedException()
 
+	def render(self, mode='human'):
+		raise NotImplementedException()
+		
 class GridActionSpace(object):
 	def __init__(self, n):
 		self.n = n

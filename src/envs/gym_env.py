@@ -27,3 +27,5 @@ class gym_env(Env):
 		ob, r, done, _ = self.env.step(action)
 		return ob, r, done
 
+	def render(self, mode='human'):
+		return self.env.render(mode)

@@ -24,6 +24,9 @@ class EnvTransform(Env):
 	
 	def step(self, action):
 		return self.env.step(action)
+		
+	def render(self, mode='human'):
+		return self.env.render(mode)
 
 class WarmUp(EnvTransform):
 	def __init__(self, env, min_step=0, max_step=30):
@@ -79,4 +82,17 @@ class ObservationStack(EnvTransform):
 		self.obs = self.obs[1:]
 		self.obs.append(ob)
 		return self.obs, r, done
+		
+class Penalizer(EnvTransform):
+	def __init__(self, env):
+		super(Penalizer, self).__init__(env)
+	def reset(self):
+		ob = self.env.reset()
+		self.score = 0
+		return ob
+	def step(self, action):
+		ob, reward, done = self.env.step(action)
+		reward = reward if not done or self.score == 499 else -100
+		self.score += reward
+		return ob, reward, done
 		

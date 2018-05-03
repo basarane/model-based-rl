@@ -109,13 +109,18 @@ class ReplayBuffer(RunnerListener, BaseSampler):
 			x = self.buffer.getItems(s, self.AGENT_HISTORY_LENGTH)
 			next_state = [b['current_state'] for b in x[1:]]
 			next_state.append(x[-1]['next_state'])
-			a.append({
+			obj = {
 				'current_state': [b['current_state'] for b in x],
 				'action': x[-1]['action'],
 				'next_state': next_state,
 				'reward': x[-1]['reward'],
 				'done': x[-1]['done']
-			})
+			}
+			# if history_length is 1, return raw state instead of list
+			if len(obj['current_state']) == 1:
+				obj['current_state'] = obj['current_state'][0]
+				obj['next_state'] = obj['next_state'][0]
+			a.append(obj)
 		return a
 	def get_sample(self):
 		samples = self.buffer.samples(self.MINIBATCH_SIZE, skewed_sampling = False)
@@ -130,6 +135,7 @@ class NStepBuffer(ReplayBuffer):
 		self.buffer = SequentialMemory(max_size=N+AGENT_HISTORY_LENGTH+5)
 		self.AGENT_HISTORY_LENGTH = AGENT_HISTORY_LENGTH
 		self.N = N
+		self.REPLAY_START_SIZE = 1
 	def on_step(self, ob, action, next_ob, reward, done):
 		self.buffer.append(ob, action, next_ob, reward, done)
 	def get_items_internal(self, samples):
@@ -138,13 +144,17 @@ class NStepBuffer(ReplayBuffer):
 			x = self.buffer.getItemsInternal(s, self.AGENT_HISTORY_LENGTH)
 			next_state = [b['current_state'] for b in x[1:]]
 			next_state.append(x[-1]['next_state'])
-			a.append({
+			obj = {
 				'current_state': [b['current_state'] for b in x],
 				'action': x[-1]['action'],
 				'next_state': next_state,
 				'reward': x[-1]['reward'],
 				'done': x[-1]['done']
-			})
+			}
+			if len(obj['current_state']) == 1:
+				obj['current_state'] = obj['current_state'][0]
+				obj['next_state'] = obj['next_state'][0]
+			a.append(obj)
 		return a
 	def get_sample(self):
 		samples = range(self.AGENT_HISTORY_LENGTH-1, len(self.buffer))
