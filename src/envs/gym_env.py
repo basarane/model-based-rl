@@ -25,6 +25,8 @@ class gym_env(Env):
 	def step(self, action):
 		#print('gym step')
 		ob, r, done, _ = self.env.step(action)
+		if r>4.9:
+			print(r)
 		return ob, r, done
 
 	def render(self, mode='human'):

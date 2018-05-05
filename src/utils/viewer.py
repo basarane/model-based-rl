@@ -7,7 +7,7 @@ from runner.runner import RunnerListener
 class EnvViewer(RunnerListener):
 	def __init__(self, env, render_step = 4, mode='human'):
 		self.env = env
-		self.render_step = 4
+		self.render_step = render_step
 		self.total_step = 0
 		self.mode = mode
 	def render(self):

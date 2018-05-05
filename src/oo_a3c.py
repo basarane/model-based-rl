@@ -2,6 +2,7 @@ import argparse
 
 parser = argparse.ArgumentParser(description='A3C Training')
 parser.add_argument('game', type=str, default='Breakout', help='Gym game name')
+parser.add_argument('--mode', type=str, default="train", help='mode: train or test')
 parser.add_argument('--output-dir', type=str, default=None, help='output directory')
 parser.add_argument('--double-dqn', type=bool, default=False, help='Use double dqn')
 parser.add_argument('--dueling-dqn', type=bool, default=False, help='Dueling dqn')
@@ -9,7 +10,6 @@ parser.add_argument('--logdir', type=str, default=None, help='Logdir for tensorb
 parser.add_argument('--thread-count', type=int, default=2, help='Number of threads')
 parser.add_argument('--enable-render', type=bool, default=False, help='enable render')
 parser.add_argument('--render-step', type=int, default=4, help='Render at this steps')
-parser.add_argument('--mode', type=str, default="train", help='mode: train or test')
 parser.add_argument('--nstep', type=int, default=5, help='step count for n-step q learning')
 parser.add_argument('--atari', type=bool, default=False, help='true if env is atari game')
 parser.add_argument('--model', type=str, default='A3CModel', help='class name for q-model')

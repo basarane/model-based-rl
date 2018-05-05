@@ -229,4 +229,50 @@ class CartPoleModel(QModel):
 	def clone(self):
 		m = self.clone_model()
 		return CartPoleModel(self.ops, m)
-		
+
+class LunarLanderModel(QModel):
+	def __init__(self, ops = None, model = None):
+		super(LunarLanderModel, self).__init__(ops, model)
+		self.model_update = self.model
+	def get_model(self):
+		print('*************GET MODEL DQN ***********************')
+		input_shape=self.ops.INPUT_SIZE
+		input = Input(shape=input_shape, name='observation')
+		x = input
+		x = Dense(512,activation="relu", kernel_initializer='he_uniform')(x)
+		if not self.ops.dueling_network:
+			x = Dense(512,activation="relu", kernel_initializer='he_uniform')(x)
+			y = Dense(self.ops.ACTION_COUNT, kernel_initializer='he_uniform')(x)
+		else:
+			xv = Dense(512,activation="relu", kernel_initializer='he_uniform', name="dense_v")(x)
+			xa = Dense(512,activation="relu", kernel_initializer='he_uniform', name="dense_a")(x)
+			v = Dense(1, kernel_initializer='he_uniform', name="v")(xv) #,activation="relu"
+			a = Dense(self.ops.ACTION_COUNT, kernel_initializer='he_uniform', name="a")(xa) #,activation="relu"
+			ma = Lambda(my_mean, arguments={'ACTION_COUNT': self.ops.ACTION_COUNT}, name="mean_a")(a)
+			y1 = Add(name="v_plus_a")([v, a])
+			y = Subtract(name="q_value")([y1, ma])
+		model = Model(inputs=[input], outputs=[y])
+		#model.summary()
+		#model.compile(optimizer=keras.optimizers.Adam(lr=LEARNING_RATE),loss=huber_loss)
+		#my_optimizer = DqnRMSprop(lr=self.ops.LEARNING_RATE, rho1=self.ops.GRADIENT_MOMENTUM, rho2=self.ops.SQUARED_GRADIENT_MOMENTUM, epsilon=self.ops.MIN_SQUARED_GRADIENT, print_layer=-1)
+		my_optimizer = Adam(lr=self.ops.LEARNING_RATE)
+		model.compile(optimizer=my_optimizer,loss='mse') #
+		#model.compile(optimizer=keras.optimizers.Adam(lr=LEARNING_RATE),loss='mse')
+		return model
+	def q_value(self, state):
+		state = np.array(state, dtype='f')
+		return self.model.predict_on_batch(state)
+	def q_update(self, state, target):
+		state = np.array(state, dtype='f')
+		loss = self.model_update.train_on_batch(state, target)
+		if self.model_update is not self.model:
+			self.model.set_weights(self.model_update.get_weights())
+		return loss
+	def get_weights(self):
+		return self.model.get_weights()
+	def set_weights(self, w):
+		self.model.set_weights(w)
+	def clone(self):
+		m = self.clone_model()
+		return CartPoleModel(self.ops, m)
+				

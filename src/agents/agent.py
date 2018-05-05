@@ -134,7 +134,7 @@ class DqnAgent(Agent, RunnerListener):
 		
 	def on_step(self, ob, action, next_ob, reward, done):
 		self.total_step_count += 1
-		if self.sampler is not None:
+		if self.sampler is not None and self.ops.mode == "train":
 			if self.sampler.has_sample():
 				samples = self.sampler.get_sample()
 				current_states = [a['current_state'] for a in samples]

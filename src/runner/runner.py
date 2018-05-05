@@ -8,7 +8,7 @@ class RunnerListener(object):
 		pass
 	
 class Runner(object):
-	def __init__(self, env, agent, agent_preproc = None, agent_step_count = None):
+	def __init__(self, env, agent, agent_preproc = None, agent_step_count = None, max_step = None):
 		self.env = env
 		self.agent = agent
 		self.episode_reward = 0
@@ -17,6 +17,7 @@ class Runner(object):
 		self.listeners = []
 		self.agent_preproc = agent_preproc 
 		self.agent_step_count = agent_step_count
+		self.max_step = max_step
 		self.stopped = False
 	def stop(self):
 		self.stopped = True
@@ -70,5 +71,7 @@ class Runner(object):
 				if done:
 					[a['listener'].on_episode_end(self.episode_reward, self.step_count) for a in self.listeners]
 					break
+				if self.max_step is not None and self.total_step_count >= self.max_step:
+					return
 	def listen(self, obj, preproc = None):
 		self.listeners.append({'listener': obj, 'preproc': preproc})
