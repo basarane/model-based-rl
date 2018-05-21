@@ -181,3 +181,63 @@ class DqnAgent(Agent, RunnerListener):
 		self.sw.add([reward, aver_loss], self.total_step_count)
 		self.losses = []
 		self.add_stat('reward', (self.total_step_count, reward))
+
+		
+from env_model.model import TDNetwork
+
+class VAgent(Agent, RunnerListener):
+	def __init__(self, action_space, env_model, v_model, ops, sw = None, verbose = True, sampler = None):
+		super(VAgent, self).__init__(action_space, ops)
+		self.env_model = env_model
+		self.v_model = v_model
+		self.sampler = sampler
+		self.sw = SummaryWriter(sw, ['Episode reward', 'Loss per batch'])
+		self.total_step_count = 0
+		self.verbose = verbose
+		self.losses = []
+		if self.ops.mode == "train":
+			self.td_model = TDNetwork(self.env_model.model, self.v_model, self.ops)
+
+	def on_step(self, ob, action, next_ob, reward, done):
+		self.total_step_count += 1
+		if self.sampler is not None and self.ops.mode == "train":
+			if self.sampler.has_sample():
+				samples = self.sampler.get_sample()
+				current_states = [a['current_state'] for a in samples]
+				loss = self.td_model.train(np.array(current_states))
+				self.losses.append(loss)
+				self.update_count += 1
+
+	def act(self, observation):
+		next_obs = self.env_model.predict_next([observation])
+		#print(next_obs)
+		prediction = np.zeros(self.ops.ACTION_COUNT, dtype='float')
+		for I in range(self.ops.ACTION_COUNT):
+			#@ersin - normalde rewardi da eklemek gerekir asagidaki gibi, simdilik eskisi gibi birakiyorum
+			r = next_obs[self.ops.ACTION_COUNT][0][I]
+			done = next_obs[self.ops.ACTION_COUNT+1+I][0][0]
+			#print(r, done)
+			prediction[I] = (r*100 if r<0 else r) + (1-done)*0.99*self.v_model.v_value(next_obs[I])[0]
+			#prediction[I] = self.v_model.v_value(next_obs[I])[0]
+		action = np.argmax(prediction)
+		#print(prediction)
+		#print(action)
+		return action		
+	def on_episode_start(self):
+		self.update_count = 0
+	def on_episode_end(self, reward, step_count):
+		#if self.verbose:
+		#	print('Episode end', reward, step_count, self.total_step_count)
+		#self.sw.add([reward], self.total_step_count)
+		#self.add_stat('reward', (self.total_step_count, reward))
+		if len(self.losses)>0:
+			x = np.array(self.losses)
+			aver_loss = x.sum() / self.update_count
+		else:
+			aver_loss = 0
+		if self.verbose:			
+			print('Episode end', reward, step_count, self.total_step_count, aver_loss)
+		self.update_count = 0
+		self.sw.add([reward, aver_loss], self.total_step_count)
+		self.losses = []
+		self.add_stat('reward', (self.total_step_count, reward))

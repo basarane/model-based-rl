@@ -7,7 +7,7 @@ class NetworkSaver(RunnerListener):
 		self.SAVE_FREQ = SAVE_FREQ
 		self.output_dir = output_dir
 		self.model = model
-	def on_step(self, ob, action, next_ob, reward, done):
+	def on_step(self, ob = None, action = None, next_ob = None, reward = None, done = None):
 		self.total_step_count += 1
 		if self.total_step_count % self.SAVE_FREQ == 0:
 			if not self.output_dir is None:

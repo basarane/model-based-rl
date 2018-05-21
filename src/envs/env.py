@@ -1,4 +1,5 @@
 
+
 class Env(object):
 	def __init__(self):
 		pass
@@ -75,4 +76,49 @@ class GridEnv(object):
 			return s, 1, True
 		else:
 			return s, -0.01, False
+
+
+import numpy as np
+import gym
+import random
+class LineEnv(object):
+	def __init__(self):
+		self.x = 0
+		self._action_space = gym.spaces.Discrete(2)
+		self._observation_space = gym.spaces.Box(-5, 5, (1,))
+		self.step_count = 0
+	@property
+	def action_space(self):
+		return self._action_space
+	
+	@property
+	def observation_space(self):
+		return self._observation_space
+
+	@property
+	def action_count(self):
+		return self._action_space.n
 		
+	def reset(self):
+		self.x = random.random()*10-5
+		self.step_count = 0
+		#return np.zeros((1,))
+		return np.array([self.x])
+	def step(self, action):
+		if action == 0:
+			self.x += 0.2 + 0.1*np.random.random()
+		if action == 1:
+			self.x -= 0.2 + 0.1*np.random.random()
+		self.x = max(-5, self.x)
+		self.x = min(5, self.x)
+		self.step_count += 1
+		s = np.zeros((1,))
+		s[0] = self.x
+		if self.x < 0.2 and self.x > -0.2:
+			return s, 1, True
+		elif self.step_count < 500:
+			return s, -0.01, False
+		else:
+			return s, -0.01, True
+
+			

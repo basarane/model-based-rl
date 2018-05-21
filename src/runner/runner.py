@@ -6,23 +6,34 @@ class RunnerListener(object):
 		pass
 	def on_episode_end(self, episode_reward, step_count):
 		pass
-	
-class Runner(object):
-	def __init__(self, env, agent, agent_preproc = None, agent_step_count = None, max_step = None):
+
+class BaseRunner(object):
+	def __init__(self, max_step = None, max_episode = None):
+		self.max_step = max_step
+		self.max_episode = max_episode
+		self.listeners = []
+		self.stopped = False
+	def stop(self):
+		self.stopped = True
+	def listen(self, obj, preproc = None):
+		self.listeners.append({'listener': obj, 'preproc': preproc})
+	def run(self):
+		raise NotImplementedException()
+		
+class Runner(BaseRunner):
+	def __init__(self, env, agent, agent_preproc = None, agent_step_count = None, max_step = None, max_episode = None):
+		super(Runner, self).__init__(max_step, max_episode)
 		self.env = env
 		self.agent = agent
 		self.episode_reward = 0
 		self.step_count = 0
 		self.total_step_count = 0
-		self.listeners = []
+		self.episode_count = 0
 		self.agent_preproc = agent_preproc 
 		self.agent_step_count = agent_step_count
-		self.max_step = max_step
-		self.stopped = False
-	def stop(self):
-		self.stopped = True
 	def run(self):
 		self.total_step_count = 0
+		self.episode_count = 0
 		while not self.stopped:
 			ob = self.env.reset()
 			[a['listener'].on_episode_start() for a in self.listeners]
@@ -69,9 +80,24 @@ class Runner(object):
 				ob_procs = next_ob_procs
 				next_ob_procs = {}
 				if done:
+					self.episode_count += 1
 					[a['listener'].on_episode_end(self.episode_reward, self.step_count) for a in self.listeners]
+					if self.max_episode is not None and self.episode_count >= self.max_episode:
+						return
 					break
 				if self.max_step is not None and self.total_step_count >= self.max_step:
 					return
-	def listen(self, obj, preproc = None):
-		self.listeners.append({'listener': obj, 'preproc': preproc})
+
+class TrajRunner(BaseRunner):
+	def __init__(self, max_step = None):
+		super(TrajRunner, self).__init__(max_step)
+		self.step = 0
+	def run(self):
+		self.step = 0
+		while True:
+			self.step += 1
+			for a in self.listeners:
+				a['listener'].on_step(None, None, None, None, None)
+			if self.max_step is not None and self.step >= self.max_step:
+				return
+		

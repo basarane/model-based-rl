@@ -33,4 +33,4 @@ class SummaryWriter(object):
 		sum_str = sess.run(self.summary_op, feed_dict = dict((a, scalar_vals[i]) for i, a in enumerate(self.scalar_vars)))
 		if self.sw is not None:
 			self.sw.add_summary(sum_str, step)
-		
+			self.sw.flush()

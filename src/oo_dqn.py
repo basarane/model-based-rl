@@ -17,7 +17,7 @@ parser.add_argument('--learning-rate', type=float, default=0.00025, help='learni
 parser.add_argument('--target-network-update', type=int, default=10000, help='target network update feq')
 parser.add_argument('--egreedy-props', type=float, nargs='*', default=[1], help='multiple egreedy props')
 parser.add_argument('--egreedy-final', type=float, nargs='*', default=[0.1], help='multiple egreedy final exploration')
-parser.add_argument('--egreedy-final-step', type=int, default=int(1e6), help='multiple egreedy final step')
+parser.add_argument('--egreedy-final-step', type=int, nargs='*', default=[int(1e6)], help='multiple egreedy final step')
 parser.add_argument('--egreedy-decay', type=float, default=1, help='exponential decay rate for egreedy')
 parser.add_argument('--env-transforms', type=str, nargs='*', default=[], help='apply the environment transforms')
 parser.add_argument('--update-frequency', type=int, default=4, help='training update frequency')
@@ -25,6 +25,13 @@ parser.add_argument('--replay-buffer-size', type=int, default=int(1e6), help='th
 parser.add_argument('--replay-start-size', type=int, default=int(50000), help='replay start size')
 parser.add_argument('--batch-size', type=int, default=int(32), help='batch size')
 parser.add_argument('--max-step', type=int, default=int(1e10), help='max step')
+parser.add_argument('--load-trajectory', type=str, default=None, help='load sample trajectories from this file and use as ReplayMemory')
+parser.add_argument('--save-trajectory', type=str, default=None, help='save trajectories to this file')
+parser.add_argument('--dont-init-tf', type=bool, default=False, help='do not init tensorflow library, do it automatically')
+parser.add_argument('--env-model', type=str, default=None, help='use simulated env model')
+parser.add_argument('--env-weightfile', type=str, default=None, help='weightfile for simulated env model')
+parser.add_argument('--env-reward', type=bool, default=False, help='use the estimated rewards from environment model')
+parser.add_argument('--save-interval', type=int, default=50000, help='save interval')
 
 args = parser.parse_args()
 
@@ -34,7 +41,13 @@ arguments = vars(args)
 
 import numpy as np
 
-stats = run_dqn(**arguments)
+
+runner, _ = run_dqn(**arguments)
+if args.save_trajectory is not None:
+	from utils.trajectory_utils import TrajectorySaver
+	ts = TrajectorySaver(args.save_trajectory)
+	runner.listen(ts, None)
+runner.run()
 
 #from PIL import Image
 #

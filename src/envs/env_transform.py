@@ -96,3 +96,52 @@ class Penalizer(EnvTransform):
 		self.score += reward
 		return ob, reward, done
 		
+from gym.spaces import Box
+class StepEnv(EnvTransform):
+	def __init__(self, env):
+		super(StepEnv, self).__init__(env)
+		self.step_count = 0
+	def reset(self):
+		ob = self.env.reset()
+		ob = self.add_step_count(ob)
+		self.step_count = 0
+		return ob
+	def step(self, action):
+		ob, reward, done = self.env.step(action)
+		self.step_count += 1
+		ob = self.add_step_count(ob)
+		return ob, reward, done
+	def add_step_count(self, vec):
+		vec = np.resize(vec, (vec.shape[0] + 1, ))
+		vec[-1] = self.step_count * 0.01
+		return vec
+	@property
+	def observation_space(self):
+		shape = (self.env.observation_space.shape[0]+1,)
+		x = Box(0, 1, shape)
+		return x
+
+class SimulatedEnv(EnvTransform):
+	def __init__(self, env, env_model, use_reward = False):
+		super(SimulatedEnv, self).__init__(env)
+		self.env_model = env_model
+		self.last_ob = None
+		self.use_reward = use_reward
+		print('Use simulated reward: ', use_reward)
+	def reset(self):
+		self.last_ob = self.env.reset()
+		return self.last_ob
+	def step(self, action):
+		res = self.env_model.predict_next([self.last_ob])
+		ob, reward, done = self.env.step(action)
+		self.last_ob = ob
+		if self.use_reward:
+			est_reward = res[self.env.action_count][0][action]
+			#print(reward, est_reward)
+			#@ersin - burasi cartpole icin eklendi, cikartmayi unutma
+			#if est_reward < 0:
+			#	est_reward = -100
+			reward = est_reward
+		#print('ob', ob)
+		#print('est', res[action][0])
+		return res[action][0], reward, done
