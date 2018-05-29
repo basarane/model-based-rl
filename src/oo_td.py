@@ -26,79 +26,17 @@ parser.add_argument('--double-dqn', type=bool, default=False, help='Use double d
 parser.add_argument('--load-trajectory', type=str, default=None, help='load sample trajectories from this file')
 parser.add_argument('--vmodel', type=str, default='V Model', help='class name for v-model')
 parser.add_argument('--save-freq', type=int, default=5000, help='save network after this many batches')
+parser.add_argument('--smin', type=float, nargs='*', default=None, help='lower bound of state values, one float for each dimension')
+parser.add_argument('--smax', type=float, nargs='*', default=None, help='upper bound of state values, one float for each dimension')
+parser.add_argument('--sample-count', type=int, default=None, help='the number of randomly generated samples to sample from')
 
 
 args = parser.parse_args()
 
-from envs.gym_env import get_env
-from env_model.model import *
-import keras.backend as K
-import tensorflow as tf 
-from nets.net import init_nn_library
+arguments = vars(args)
+
+from algo.td import run_td
 
 arguments = vars(args)
 
-init_nn_library(True, "1")
-
-env = get_env(args.game, args.atari, args.env_transforms)
-
-envOps = EnvOps(env.observation_space.shape, env.action_space.n, args.learning_rate)
-print(env.observation_space.low)
-print(env.observation_space.high)
-
-env_model = globals()[args.env_model](envOps)
-env_model.model.load_weights(args.env_weightfile)
-
-v_model = globals()[args.vmodel](envOps)
-
-import numpy as np
-td_model = TDNetwork(env_model.model, v_model, envOps)
-
-summary_writer = tf.summary.FileWriter(args.logdir, K.get_session().graph) if not args.logdir is None else None
-sw = SummaryWriter(summary_writer, ['Loss'])
-
-
-#dqn_args = arguments.copy()
-#dqn_args['mode'] = 'test'
-#dqn_args['replay_buffer_size'] = 0
-#
-#class TDListener(RunnerListener):
-#	def __init__(self, replay_buffer, td_model):
-#		self.replay_buffer = replay_buffer
-#		self.td_model = td_model
-#		self.I = 0
-#	def on_step(self, ob, action, next_ob, reward, done):
-#		if self.replay_buffer.has_sample():
-#			samples = self.replay_buffer.get_sample()
-#			#samples = np.array([a['current_state'] for a in samples], dtype='f')
-#			samples = np.random.uniform([-4.8, -5, -0.48, -5], [4.8, 5, 0.48, 5], size=(args.batch_size,4))
-#			loss = self.td_model.train(samples)
-#			sw.add([loss], I)
-#			if self.I % args.target_network_update == 0:
-#				self.td_model.v_model_eval.set_weights(self.td_model.v_model.get_weights())
-#			self.I += 1
-#
-#from algo.dqn import run_dqn			
-#from utils.memory import ReplayBuffer
-#
-#runner = run_dqn(**dqn_args)
-#replay_buffer = ReplayBuffer(args.replay_buffer_size, 1, args.update_frequency, args.replay_start_size, args.batch_size)
-#runner.listen(replay_buffer, None)
-#runner.listen(TDListener(replay_buffer, td_model), None)
-#runner.run()
-
-from utils.trajectory_utils import TrajectoryLoader
-traj = TrajectoryLoader(args.load_trajectory)
-
-from utils.network_utils import NetworkSaver
-network_saver = NetworkSaver(args.save_freq, args.logdir, v_model.model)
-
-for I in xrange(args.max_step):
-	#batch = np.random.uniform([-4.8, -5, -0.48, -5], [4.8, 5, 0.48, 5], size=(args.batch_size,4))
-	batch = traj.sample(args.batch_size)
-	loss = td_model.train(batch['current'])
-	sw.add([loss], I)
-	network_saver.on_step()
-	if I % args.target_network_update == 0:
-		td_model.v_model_eval.set_weights(td_model.v_model.get_weights())
-	
+run_td(**arguments)

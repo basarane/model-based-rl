@@ -122,8 +122,8 @@ class ReplayBuffer(RunnerListener, BaseSampler):
 				obj['next_state'] = obj['next_state'][0]
 			a.append(obj)
 		return a
-	def get_sample(self):
-		samples = self.buffer.samples(self.MINIBATCH_SIZE, skewed_sampling = False)
+	def get_sample(self, skewed_sampling = False):
+		samples = self.buffer.samples(self.MINIBATCH_SIZE, skewed_sampling)
 		return self.get_items_internal(samples)
 	def has_sample(self):
 		return self.total_step_count % self.UPDATE_FREQUENCY == 0 and self.total_step_count>self.REPLAY_START_SIZE	

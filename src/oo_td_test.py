@@ -17,55 +17,9 @@ parser.add_argument('--vmodel', type=str, default='V Model', help='class name fo
 
 args = parser.parse_args()
 
-from envs.gym_env import get_env
-from env_model.model import *
-import keras.backend as K
-import tensorflow as tf 
-from nets.net import init_nn_library
-from agents.agent import VAgent
+from algo.td import run_td_test
 
 arguments = vars(args)
 
-init_nn_library(True, "1")
-
-#env = gym_env(args.game)
-env = get_env(args.game, args.atari, args.env_transforms)
-
-viewer = None
-if args.enable_render:
-	viewer = EnvViewer(env, args.render_step, 'human')
-
-envOps = EnvOps(env.observation_space.shape, env.action_space.n, 0)
-print(env.observation_space.low)
-print(env.observation_space.high)
-
-env_model = globals()[args.env_model](envOps)
-env_model.model.load_weights(args.env_weightfile)
-
-v_model = globals()[args.vmodel](envOps)
-
-weight_files = []
-if len(args.load_weightfile) == 1:
-	weight_files = [args.load_weightfile]
-else:
-	idxs = range(int(args.load_weightfile[1]), int(args.load_weightfile[3]), int(args.load_weightfile[2]))
-	weight_files = [args.load_weightfile[0] + str(I) + '.h5' for I in idxs]
-	
-summary_writer = tf.summary.FileWriter(args.logdir, K.get_session().graph) if not args.logdir is None else None
-	
-sw = SummaryWriter(summary_writer, ['Average reward'])
-#sw = SummaryWriter(summary_writer, ['Reward'])
-
-for I, weight_file in enumerate(weight_files): 
-	v_model.model.load_weights(weight_file)
-	v_agent = VAgent(env.action_space, env_model, v_model, envOps, None, False)
-	runner = Runner(env, v_agent, None, 1, max_step=args.max_step, max_episode=args.max_episode)
-	runner.listen(v_agent, None)
-	if viewer is not None:
-		runner.listen(viewer, None)
-	runner.run()
-	stats = np.array(v_agent.stats['reward'])
-	aver_reward = stats[:,1].sum() / stats[-1,0]
-	sw.add([aver_reward], I)
-	print('{0} / {1}: Aver Reward = {2} '.format(I+1, len(weight_files), aver_reward))
-	
+stats = run_td_test(**arguments)
+print(stats)

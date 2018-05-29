@@ -25,6 +25,7 @@ parser.add_argument('--replay-buffer-size', type=int, default=int(1e6), help='th
 parser.add_argument('--replay-start-size', type=int, default=int(50000), help='replay start size')
 parser.add_argument('--batch-size', type=int, default=int(32), help='batch size')
 parser.add_argument('--max-step', type=int, default=int(1e10), help='max step')
+parser.add_argument('--max-episode', type=int, default=None, help='max episode')
 parser.add_argument('--load-trajectory', type=str, default=None, help='load sample trajectories from this file and use as ReplayMemory')
 parser.add_argument('--save-trajectory', type=str, default=None, help='save trajectories to this file')
 parser.add_argument('--dont-init-tf', type=bool, default=False, help='do not init tensorflow library, do it automatically')
@@ -41,14 +42,17 @@ arguments = vars(args)
 
 import numpy as np
 
-
-runner, _ = run_dqn(**arguments)
-if args.save_trajectory is not None:
-	from utils.trajectory_utils import TrajectorySaver
-	ts = TrajectorySaver(args.save_trajectory)
-	runner.listen(ts, None)
-runner.run()
-
+if args.mode == "train":
+	runner, _ = run_dqn(**arguments)
+	if args.save_trajectory is not None:
+		from utils.trajectory_utils import TrajectorySaver
+		ts = TrajectorySaver(args.save_trajectory)
+		runner.listen(ts, None)
+	runner.run()
+else:
+	stats = run_dqn_test(**arguments)
+	
+	
 #from PIL import Image
 #
 #from envs.gym_env import gym_env

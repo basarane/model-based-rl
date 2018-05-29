@@ -118,7 +118,7 @@ class DqnAgent(Agent, RunnerListener):
 	def __init__(self, action_space, q_model, sampler, rewproc, ops, sw = None, model_eval=None):
 		super(DqnAgent, self).__init__(action_space, ops)
 		self.q_model = q_model
-		if model_eval is not None:
+		if model_eval is not None or self.ops.mode == 'test':
 			self.q_model_eval = model_eval
 		else:
 			self.q_model_eval = q_model.clone()
@@ -186,7 +186,7 @@ class DqnAgent(Agent, RunnerListener):
 from env_model.model import TDNetwork
 
 class VAgent(Agent, RunnerListener):
-	def __init__(self, action_space, env_model, v_model, ops, sw = None, verbose = True, sampler = None):
+	def __init__(self, action_space, env_model, v_model, ops, sw = None, verbose = True, sampler = None, target_network_update = 10000):
 		super(VAgent, self).__init__(action_space, ops)
 		self.env_model = env_model
 		self.v_model = v_model
@@ -195,6 +195,7 @@ class VAgent(Agent, RunnerListener):
 		self.total_step_count = 0
 		self.verbose = verbose
 		self.losses = []
+		self.target_network_update = target_network_update
 		if self.ops.mode == "train":
 			self.td_model = TDNetwork(self.env_model.model, self.v_model, self.ops)
 
@@ -204,9 +205,14 @@ class VAgent(Agent, RunnerListener):
 			if self.sampler.has_sample():
 				samples = self.sampler.get_sample()
 				current_states = [a['current_state'] for a in samples]
+				#@ersin - test icin eklendi cikart
+				#current_states = np.random.random((64,1))*2-1
 				loss = self.td_model.train(np.array(current_states))
 				self.losses.append(loss)
 				self.update_count += 1
+		if self.total_step_count % self.target_network_update == 0:
+			self.td_model.v_model_eval.set_weights(self.td_model.v_model.get_weights())
+					
 
 	def act(self, observation):
 		next_obs = self.env_model.predict_next([observation])
@@ -217,7 +223,9 @@ class VAgent(Agent, RunnerListener):
 			r = next_obs[self.ops.ACTION_COUNT][0][I]
 			done = next_obs[self.ops.ACTION_COUNT+1+I][0][0]
 			#print(r, done)
-			prediction[I] = (r*100 if r<0 else r) + (1-done)*0.99*self.v_model.v_value(next_obs[I])[0]
+			#@ersin buraya kod eklemisim CartPole icin
+			#prediction[I] = (r*100 if r<0 else r) + (1-done)*0.99*self.v_model.v_value(next_obs[I])[0]
+			prediction[I] = r + (1-done)*0.99*self.v_model.v_value(next_obs[I])[0]
 			#prediction[I] = self.v_model.v_value(next_obs[I])[0]
 		action = np.argmax(prediction)
 		#print(prediction)

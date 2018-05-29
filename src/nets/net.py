@@ -209,7 +209,8 @@ class CartPoleModel(QModel):
 		#model.summary()
 		#model.compile(optimizer=keras.optimizers.Adam(lr=LEARNING_RATE),loss=huber_loss)
 		#my_optimizer = DqnRMSprop(lr=self.ops.LEARNING_RATE, rho1=self.ops.GRADIENT_MOMENTUM, rho2=self.ops.SQUARED_GRADIENT_MOMENTUM, epsilon=self.ops.MIN_SQUARED_GRADIENT, print_layer=-1)
-		my_optimizer = Adam(lr=self.ops.LEARNING_RATE)
+		#my_optimizer = Adam(lr=self.ops.LEARNING_RATE)
+		my_optimizer = RMSprop(lr=self.ops.LEARNING_RATE)
 		model.compile(optimizer=my_optimizer,loss='mse') #
 		#model.compile(optimizer=keras.optimizers.Adam(lr=LEARNING_RATE),loss='mse')
 		return model
@@ -281,7 +282,7 @@ class LineModel(QModel):
 		super(LineModel, self).__init__(ops, model)
 		self.model_update = self.model
 	def get_model(self):
-		print('*************GET MODEL DQN ***********************')
+		print('*************GET MODEL DQN LINE ***********************')
 		input_shape=self.ops.INPUT_SIZE
 		input = Input(shape=input_shape, name='observation')
 		x = input

@@ -40,7 +40,7 @@ def plot_log(fname):
 	#return
 	#print(s['current'])
 	print(s['current'].shape)
-	for step,ID in zip(range(1000, 10001, 1000), range(0, 100000)):
+	for step,ID in zip(range(1000, 50000, 1000), range(0, 100000)):
 		q_model.model.load_weights('../test_line_dqn/linedqn-2/weights_{}.h5'.format(step))
 		q_value = q_model.q_value(s['current'])
 		s['qvalue'] = q_value.max(axis=1) #[:,1]##
@@ -65,4 +65,4 @@ def plot_log(fname):
 			plt.close()
 	counter += 1
 				
-plot_log('../test_line_dqn/traj-2_mix.h5')
+plot_log('../test_line_dqn/traj-1_mix.h5')

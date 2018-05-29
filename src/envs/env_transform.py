@@ -92,7 +92,7 @@ class Penalizer(EnvTransform):
 		return ob
 	def step(self, action):
 		ob, reward, done = self.env.step(action)
-		reward = reward if not done or self.score == 499 else -100
+		reward = reward if not done or self.score == 499 else -5
 		self.score += reward
 		return ob, reward, done
 		
