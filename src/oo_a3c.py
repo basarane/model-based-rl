@@ -25,6 +25,7 @@ parser.add_argument('--replay-buffer-size', type=int, default=int(1e6), help='th
 parser.add_argument('--replay-start-size', type=int, default=int(50000), help='replay start size')
 parser.add_argument('--batch-size', type=int, default=int(32), help='batch size')
 parser.add_argument('--max-step', type=int, default=int(1e10), help='max step')
+parser.add_argument('--save-interval', type=int, default=50000, help='save interval')
 
 args = parser.parse_args()
 

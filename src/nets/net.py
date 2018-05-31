@@ -3,7 +3,7 @@ from keras.layers import Input, Permute, ZeroPadding2D, Conv2D, Flatten, Dense, 
 from keras import Model
 from keras.optimizers import RMSprop, Adam
 from optimizers import DqnRMSprop
-from loss import huber_loss
+from loss import huber_loss, huber_loss_mse
 import numpy as np
 import keras.backend as K
 
@@ -256,8 +256,10 @@ class LunarLanderModel(QModel):
 		#model.summary()
 		#model.compile(optimizer=keras.optimizers.Adam(lr=LEARNING_RATE),loss=huber_loss)
 		#my_optimizer = DqnRMSprop(lr=self.ops.LEARNING_RATE, rho1=self.ops.GRADIENT_MOMENTUM, rho2=self.ops.SQUARED_GRADIENT_MOMENTUM, epsilon=self.ops.MIN_SQUARED_GRADIENT, print_layer=-1)
-		my_optimizer = Adam(lr=self.ops.LEARNING_RATE)
+		#my_optimizer = Adam(lr=self.ops.LEARNING_RATE)
+		my_optimizer = RMSprop(lr=self.ops.LEARNING_RATE)
 		model.compile(optimizer=my_optimizer,loss='mse') #
+		#model.compile(optimizer=my_optimizer,loss=huber_loss) #
 		#model.compile(optimizer=keras.optimizers.Adam(lr=LEARNING_RATE),loss='mse')
 		return model
 	def q_value(self, state):

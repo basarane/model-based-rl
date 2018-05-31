@@ -80,6 +80,12 @@ def plot_compare(basedir, algos, fname, title):
 			algo_title = algo
 			if algo_title == 'dqn':
 				algo_title = 'DQN'
+			if algo_title == 'a3c':
+				algo_title = 'Async n-step Q (A3C paper)'
+			if algo_title == 'ddqn':
+				algo_title = 'Double-DQN'
+			if algo_title == 'dueling-dqn':
+				algo_title = 'Dueling-DQN'
 			if algo_title == 'td':
 				algo_title = 'Offline-TD'
 			if algo_title == 'td_realtime':
@@ -102,3 +108,5 @@ plot_compare('algo_convergence_line', ['dqn', 'td_realtime', 'td'], 'test', 'Lin
 plot_compare('algo_convergence_cartpole', ['dqn', 'td_realtime', 'td'], 'test', 'Cartpole') #'td', 'td_realtime', 
 plot_compare('algo_convergence_cartpole_01', ['td-01', 'td-02', 'td-03', 'td-04', 'td-05', 'td-06', 'td-07', 'td-08', 'td-09', 'td-10', 'td'], 'test-td', 'Cartpole') 
 plot_compare('algo_convergence_cartpole_01', ['dqn', 'td_realtime', 'td'], 'test', 'Cartpole') #'td', 'td_realtime', 
+
+plot_compare('algo_convergence_lander', ['dqn', 'ddqn', 'dueling-dqn', 'a3c'], 'test', 'Lunar Lander') #

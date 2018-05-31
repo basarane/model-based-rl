@@ -22,6 +22,11 @@ def run_a3c(**kargs):
 	from collections import namedtuple
 	args = namedtuple("A3CParams", kargs.keys())(*kargs.values())
 
+	if len(args.egreedy_props)>1 and args.egreedy_props[0] == round(args.egreedy_props[0]):
+		if not round(np.array(args.egreedy_props).sum()) == args.thread_count-1:
+			print('thread_count '+str(args.thread_count)+' should be one more than the sum of egreedy_props ' +str(np.array(args.egreedy_props).sum()))
+			return
+	
 	ENABLE_RENDER = args.enable_render
 	if not args.output_dir is None:
 		import os, sys
@@ -60,6 +65,9 @@ def run_a3c(**kargs):
 		#model = TabularQModel(modelOps)
 		#target_network_update_freq = 100
 		SAVE_FREQ = 1e10
+		
+	if 'save_interval' in kargs and kargs['save_interval'] is not None:
+		SAVE_FREQ = kargs['save_interval']
 
 	modelOps.LEARNING_RATE = args.learning_rate
 	target_network_update_freq = args.target_network_update
@@ -135,7 +143,14 @@ def run_a3c(**kargs):
 					#if args.egreedy_decay<1:
 					#	egreedyAgent = EGreedyAgentExp(env.action_space, egreedyOps, agent)
 					#else:
-					egreedyAgent = MultiEGreedyAgent(env.action_space, egreedyOps, agent, args.egreedy_props, args.egreedy_final, args.egreedy_decay, args.egreedy_final_step)
+					if len(args.egreedy_props)>1 and args.egreedy_props[0] == round(args.egreedy_props[0]):
+						cs = np.array(args.egreedy_props)
+						cs = np.cumsum(cs)
+						idx = np.searchsorted(cs, threadId)
+						print('Egreedyagent selected', idx, args.egreedy_final[idx], args.egreedy_decay[idx], args.egreedy_final_step[idx])
+						egreedyAgent = MultiEGreedyAgent(env.action_space, egreedyOps, agent, [1], [args.egreedy_final[idx]], [args.egreedy_decay[idx]], [args.egreedy_final_step[idx]])
+					else:
+						egreedyAgent = MultiEGreedyAgent(env.action_space, egreedyOps, agent, args.egreedy_props, args.egreedy_final, args.egreedy_decay, args.egreedy_final_step)
 				
 				self.runner = Runner(env, egreedyAgent if egreedyAgent is not None else agent, proproc, modelOps.AGENT_HISTORY_LENGTH)
 				if replay_buffer is not None:
@@ -155,20 +170,20 @@ def run_a3c(**kargs):
 			global model, model_eval
 			with tLock:
 				T = T + 1
+				if T % target_network_update_freq == 0:
+					#print('CLONE TARGET: ' + str(T))
+					model_eval.set_weights(model.get_weights())
+					for agent in agents:
+						agent.model_eval = model_eval
+				if T % SAVE_FREQ == 0 and args.mode == "train":
+					if not args.output_dir is None:
+						model.model.save_weights(args.output_dir + '/weights_{0}.h5'.format(T))
 			#if T % 1000 == 0:
 			#	print('STEP', T)
 			#if self.threadId == 0 and T % 10 == 0:
 			#	self.q_model.set_weights(model.get_weights())
-			if T % target_network_update_freq == 0:
-				#print('CLONE TARGET: ' + str(T))
-				model_eval.set_weights(model.get_weights())
-				for agent in agents:
-					agent.model_eval = model_eval
 			if T%args.render_step == 0 and ENABLE_RENDER:
 				viewer.imshow(np.repeat(np.reshape(ob, ob.shape + (1,)), 3, axis=2))
-			if T % SAVE_FREQ == 0 and args.mode == "train":
-				if not args.output_dir is None:
-					model.model.save_weights(args.output_dir + '/weights_{0}.h5'.format(T))
 			if T > args.max_step:
 				self.stop()
 			#print(T)
