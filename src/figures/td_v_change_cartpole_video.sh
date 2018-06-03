@@ -1,4 +1,4 @@
-cd td_v_change_cartpole
+cd td_offline_v_change_cartpole
 ../seq_to_video.sh 0-1 0-1.mp4
 ../seq_to_video.sh 0-2 0-2.mp4
 ../seq_to_video.sh 0-3 0-3.mp4

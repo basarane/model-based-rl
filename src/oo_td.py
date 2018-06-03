@@ -29,6 +29,7 @@ parser.add_argument('--save-freq', type=int, default=5000, help='save network af
 parser.add_argument('--smin', type=float, nargs='*', default=None, help='lower bound of state values, one float for each dimension')
 parser.add_argument('--smax', type=float, nargs='*', default=None, help='upper bound of state values, one float for each dimension')
 parser.add_argument('--sample-count', type=int, default=None, help='the number of randomly generated samples to sample from')
+parser.add_argument('--monitor-dir', type=str, default=None, help='gym-env monitor directory')
 
 
 args = parser.parse_args()

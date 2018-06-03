@@ -1,11 +1,12 @@
 import gym
+from gym import wrappers
 
 from env import *
 from env_transform import *
 
-def get_env(game, atari = False, env_transforms = []):
+def get_env(game, atari = False, env_transforms = [], monitor_dir = None):
 	if atari:
-		env = gym_env(game + 'NoFrameskip-v0')
+		env = gym_env(game + 'NoFrameskip-v0', monitor_dir)
 		env = WarmUp(env, min_step=0, max_step=30)
 		env = ActionRepeat(env, 4)
 	else:
@@ -14,15 +15,17 @@ def get_env(game, atari = False, env_transforms = []):
 		elif game == "Line":
 			env = LineEnv()
 		else:
-			env = gym_env(game)
+			env = gym_env(game, monitor_dir)
 	for trans in env_transforms:
 		env = globals()[trans](env)
 	return env
 	
 class gym_env(Env):
-	def __init__(self, rom_name):
+	def __init__(self, rom_name, monitor_dir = None):
 		super(Env, self).__init__()
 		self.env = gym.make(rom_name)
+		if monitor_dir is not None:
+			self.env = wrappers.Monitor(self.env, monitor_dir, force=True, video_callable=lambda episode_id: True)
 	
 	@property
 	def action_space(self):

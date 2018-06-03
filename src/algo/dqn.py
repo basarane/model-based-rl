@@ -42,13 +42,16 @@ def run_dqn(**kargs):
 	#	#q_model = TabularQModel(modelOps)
 	#for trans in args.env_transforms:
 	#	env = globals()[trans](env)
-	env = get_env(args.game, args.atari, args.env_transforms)
-	if 'env_model' in kargs and kargs['env_model'] is not None and kargs['env_weightfile'] is not None:
-		print('Using simulated environment')
-		envOps = EnvOps(env.observation_space.shape, env.action_space.n, args.learning_rate)
-		env_model = globals()[kargs['env_model']](envOps)
-		env_model.model.load_weights(kargs['env_weightfile'])
-		env = SimulatedEnv(env, env_model, use_reward='env_reward' in kargs and kargs['env_reward'])
+	if 'use_env' in kargs and kargs['use_env'] is not None:
+		env = kargs['use_env']
+	else:
+		env = get_env(args.game, args.atari, args.env_transforms, kargs['monitor_dir'] if 'monitor_dir' in kargs else None)
+		if 'env_model' in kargs and kargs['env_model'] is not None and kargs['env_weightfile'] is not None:
+			print('Using simulated environment')
+			envOps = EnvOps(env.observation_space.shape, env.action_space.n, args.learning_rate)
+			env_model = globals()[kargs['env_model']](envOps)
+			env_model.model.load_weights(kargs['env_weightfile'])
+			env = SimulatedEnv(env, env_model, use_reward='env_reward' in kargs and kargs['env_reward'])
 
 	modelOps = DqnOps(env.action_count)
 	modelOps.dueling_network = args.dueling_dqn
@@ -131,8 +134,11 @@ def run_dqn_test(**kargs):
 	args = namedtuple("DQNParams", kargs.keys())(*kargs.values())
 
 	weight_files = []
-	if len(args.load_weightfile) == 1:
-		weight_files = [(args.load_weightfile,0)]
+	if not isinstance(args.load_weightfile,list) or len(args.load_weightfile) == 1:
+		wf = args.load_weightfile
+		if isinstance(wf,list):
+			wf = wf[0]
+		weight_files = [(wf,0)]
 	else:
 		idxs = range(int(args.load_weightfile[1]), int(args.load_weightfile[3]), int(args.load_weightfile[2]))
 		weight_files = [(args.load_weightfile[0] + str(I) + '.h5',I) for I in idxs]
@@ -145,13 +151,16 @@ def run_dqn_test(**kargs):
 		'reward': []
 	}
 	q_model_initial = None
+	last_env = None
 	for I, weight_file_info in enumerate(weight_files): 
 		weight_file = weight_file_info[0]
 		total_step_count = weight_file_info[1]
 		arguments = kargs.copy()
 		arguments['load_weightfile'] = weight_file
 		arguments['q_model_initial'] = q_model_initial
+		arguments['use_env'] = last_env
 		runner, agent = run_dqn(**arguments)
+		last_env = runner.env
 		if q_model_initial is None:
 			q_model_initial = agent.q_model
 		runner.run()

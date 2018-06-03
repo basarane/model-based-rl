@@ -14,7 +14,7 @@ def run_td(**kargs):
 
 	init_nn_library(True, "1")
 
-	env = get_env(args.game, args.atari, args.env_transforms)
+	env = get_env(args.game, args.atari, args.env_transforms, kargs['monitor_dir'] if 'monitor_dir' in kargs else None)
 
 	envOps = EnvOps(env.observation_space.shape, env.action_space.n, args.learning_rate)
 	print(env.observation_space.low)
@@ -81,7 +81,8 @@ def run_td_test(**kargs):
 	init_nn_library(True, "1")
 
 	#env = gym_env(args.game)
-	env = get_env(args.game, args.atari, args.env_transforms)
+	print(kargs['monitor_dir'])
+	env = get_env(args.game, args.atari, args.env_transforms, kargs['monitor_dir'] if 'monitor_dir' in kargs else None)
 
 	viewer = None
 	if args.enable_render:
@@ -98,7 +99,7 @@ def run_td_test(**kargs):
 	v_model = globals()[args.vmodel](envOps)
 
 	weight_files = []
-	if len(args.load_weightfile) == 1:
+	if not isinstance(args.load_weightfile,list):
 		weight_files = [(args.load_weightfile,0)]
 	else:
 		idxs = range(int(args.load_weightfile[1]), int(args.load_weightfile[3]), int(args.load_weightfile[2]))

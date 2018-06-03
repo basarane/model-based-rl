@@ -4,7 +4,7 @@ parser = argparse.ArgumentParser(description='DQN Training')
 parser.add_argument('game', type=str, default='Breakout', help='Gym game name')
 parser.add_argument('--mode', type=str, default="train", help='mode: train or test')
 parser.add_argument('--test-epsilon', type=float, default=0.05, help='epsilon for testing')
-parser.add_argument('--load-weightfile', type=str, default=None, help='load initial weights')
+parser.add_argument('--load-weightfile', type=str, nargs='*', default=None, help='load initial weights')
 parser.add_argument('--output-dir', type=str, default=None, help='output directory')
 parser.add_argument('--double-dqn', type=bool, default=False, help='Use double dqn')
 parser.add_argument('--dueling-dqn', type=bool, default=False, help='Dueling dqn')
@@ -33,10 +33,11 @@ parser.add_argument('--env-model', type=str, default=None, help='use simulated e
 parser.add_argument('--env-weightfile', type=str, default=None, help='weightfile for simulated env model')
 parser.add_argument('--env-reward', type=bool, default=False, help='use the estimated rewards from environment model')
 parser.add_argument('--save-interval', type=int, default=50000, help='save interval')
+parser.add_argument('--monitor-dir', type=str, default=None, help='gym-env monitor directory')
 
 args = parser.parse_args()
 
-from algo.dqn import run_dqn
+from algo.dqn import run_dqn, run_dqn_test
 
 arguments = vars(args)
 

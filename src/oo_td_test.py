@@ -14,6 +14,7 @@ parser.add_argument('--env-transforms', type=str, nargs='*', default=[], help='a
 parser.add_argument('--enable-render', type=bool, default=False, help='Enable render')
 parser.add_argument('--render-step', type=int, default=4, help='render step')
 parser.add_argument('--vmodel', type=str, default='V Model', help='class name for v-model')
+parser.add_argument('--monitor-dir', type=str, default=None, help='gym-env monitor directory')
 
 args = parser.parse_args()
 

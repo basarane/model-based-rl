@@ -1,6 +1,12 @@
+python -B oo_td_test.py CartPole-v1 --env-model EnvModelCartPoleManual --max-episode 1 --vmodel CartPoleVNetwork --load-weightfile  figures/algo_convergence_cartpole/td_realtime/train-0/weights_ 1000 1000 50001 --env-transform Penalizer --monitor-dir figures/algo_convergence_cartpole/td_realtime/train-0/monitor
+
+#python -B oo_td_test.py CartPole-v1 --env-model EnvModelCartPoleManual --max-episode 1 --vmodel CartPoleVNetwork --load-weightfile  figures/algo_convergence_cartpole/td/train-1/weights_ 1000 1000 50001 --env-transform Penalizer --monitor-dir figures/algo_convergence_cartpole/td/train-1/monitor
+
+#python -B oo_td_test.py CartPole-v1 --env-model EnvModelCartPoleManual --max-episode 1 --vmodel CartPoleVNetwork --load-weightfile  figures/algo_convergence_cartpole/td/train-0/weights_ 1000 1000 50001 --env-transform Penalizer --monitor-dir figures/algo_convergence_cartpole/td/train-0/monitor
+
 # bir onceki ile ayni. VAgent'ta sadece next state'e bakiliyordu, artik reward + next_state'e bakiliyor 
-rm test_cartpole_v/test24 -rf
-python -B oo_td_test.py CartPole-v1 --env-model EnvModelCartpole --env-weightfile test_cartpole_model3/reward-25/weights_100000.h5 --max-episode 5 --vmodel CartPoleVNetwork --load-weightfile  test_cartpole_td/test39/weights_ 1 1 1000 --env-transform Penalizer --logdir test_cartpole_v/test24
+#rm test_cartpole_v/test24 -rf
+#python -B oo_td_test.py CartPole-v1 --env-model EnvModelCartpole --env-weightfile test_cartpole_model3/reward-25/weights_100000.h5 --max-episode 5 --vmodel CartPoleVNetwork --load-weightfile  test_cartpole_td/test39/weights_ 1 1 1000 --env-transform Penalizer --logdir test_cartpole_v/test24
 
 # td-test30, v-test14 tekrari x 500 step
 # use different trajectory sample epsilon = [0.2, 0.4, 0.6] trajectory_utils/TrajectoryLoader'da manuel kod degistirildi
