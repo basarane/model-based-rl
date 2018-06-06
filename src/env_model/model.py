@@ -169,7 +169,7 @@ class EnvModelLineManual(EnvModel):
 
 # adapted from https://github.com/openai/gym/blob/master/gym/envs/classic_control/cartpole.py
 
-def next_state_fn(input, action):
+def cartpole_next_state_fn(input, action):
 	gravity = 9.8
 	masscart = 1.0
 	masspole = 0.1
@@ -213,7 +213,7 @@ class EnvModelCartPoleManual(EnvModel):
 		x_threshold = 2.4
 		
 		for I in range(self.ops.ACTION_COUNT):
-			action_output = Lambda(next_state_fn, arguments={'action': I})(input)
+			action_output = Lambda(cartpole_next_state_fn, arguments={'action': I})(input)
 			action_outputs.append(action_output)
 			print(action_output.shape)
 			x_threshold_test = Lambda(lambda x: K.switch(K.abs(x[:,0]) > x_threshold, 1+x[:,0:1]*0, x[:,0:1]*0))(action_output)
@@ -235,6 +235,62 @@ class EnvModelCartPoleManual(EnvModel):
 	def train_next(self, current_state, next_states):
 		return self.model.train_on_batch(np.array(current_state, dtype='f'), next_states)	
 				
+# adapted from https://github.com/openai/gym/blob/master/gym/envs/classic_control/mountain_car.py
+
+def mountaincar_next_state_fn(input, action):
+	min_position = -1.2
+	max_position = 0.6
+	max_speed = 0.07
+	goal_position = 0.5
+
+	position = input[:,0]
+	velocity = input[:,1]
+
+	velocity += (action-1)*0.001 + K.cos(3*position)*(-0.0025)
+	velocity = K.clip(velocity, -max_speed, max_speed)
+	position += velocity
+	position = K.clip(position, min_position, max_position)
+	#if (position==min_position and velocity<0): velocity = 0
+	#print(position, position.shape)
+	#print(velocity, velocity.shape)
+	velocity = K.switch(K.equal(position, min_position), K.switch(velocity<0, velocity*0,velocity), velocity) #
+	return K.stack([position, velocity], axis=1)
+
+class EnvModelMountainCarManual(EnvModel):
+	def __init__(self, ops):
+		super(EnvModelMountainCarManual, self).__init__(ops)
+		self.model = self.get_model()
+		
+	def get_model(self):
+		input_shape=self.ops.INPUT_SIZE
+		input = Input(shape=input_shape, name='observation')
+
+		action_outputs = []
+		done_outputs = []
+		reward_outputs = []
+
+		goal_position = 0.5
+		
+		for I in range(self.ops.ACTION_COUNT):
+			action_output = Lambda(mountaincar_next_state_fn, arguments={'action': I})(input)
+			action_outputs.append(action_output)
+			#print(action_output.shape)
+			done_output = Lambda(lambda x: K.switch(x[:,0] > goal_position, 1+x[:,0:1]*0, x[:,0:1]*0))(action_output)
+			done_outputs.append(done_output)
+			# @ersin: -100: penalizer'li hali
+			#reward_output = Lambda(lambda x: x[:,0:1]*0 - 1)(done_output)
+			reward_output = Lambda(lambda x: K.switch(x < 0.01, x[:,0:1]*0 -0.01, x[:,0:1]*0 + 1 ))(done_output)
+
+			reward_outputs.append(reward_output)
+		reward_output_concat = Concatenate()(reward_outputs)
+		model = Model(inputs=[input], outputs=action_outputs + [reward_output_concat] + done_outputs)
+		my_optimizer = Adam(lr=self.ops.LEARNING_RATE)
+		model.compile(optimizer=my_optimizer,loss='mse')
+		return model
+	def predict_next(self, current_state):
+		return self.model.predict(np.array(current_state, dtype='f'))
+	def train_next(self, current_state, next_states):
+		return self.model.train_on_batch(np.array(current_state, dtype='f'), next_states)			
 		
 class EnvModelLunarLander(EnvModel):
 	def __init__(self, ops):

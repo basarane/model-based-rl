@@ -81,7 +81,7 @@ def run_td_test(**kargs):
 	init_nn_library(True, "1")
 
 	#env = gym_env(args.game)
-	print(kargs['monitor_dir'])
+	print('Monitor dir', kargs['monitor_dir'] if 'monitor_dir' in kargs else None)
 	env = get_env(args.game, args.atari, args.env_transforms, kargs['monitor_dir'] if 'monitor_dir' in kargs else None)
 
 	viewer = None

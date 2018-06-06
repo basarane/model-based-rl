@@ -71,7 +71,7 @@ def algo_convergence(arguments, baseDir, algos, run_count = 4, max_episode = 5, 
 			else:
 				algoname = algo
 				dirname = algo
-			print(baseDir, dirname, runNo, args, algo['args'])
+			print(baseDir, dirname, runNo, args) #, algo['args']
 			args['logdir'] = baseDir + '/' + dirname + '/train-' + str(runNo) 
 			proc = Process(target=globals()['run_' + algoname + '_thread'], args=(baseDir + '/' + dirname, runNo, args, max_episode, test_only))
 			proc.start()
