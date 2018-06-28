@@ -37,7 +37,7 @@ def run_a3c(**kargs):
 		from gym.envs.classic_control import rendering
 		viewer = rendering.SimpleImageViewer()
 
-	init_nn_library(False, "1")
+	init_nn_library("gpu" in kargs and kargs["gpu"] is not None, kargs["gpu"] if "gpu" in kargs else "1")
 
 	if args.atari:
 		env = gym_env(args.game + 'NoFrameskip-v0')
@@ -112,10 +112,13 @@ def run_a3c(**kargs):
 					#q_model = TabularQModel(modelOps)
 				for trans in args.env_transforms:
 					env = globals()[trans](env)
-				q_model = globals()[args.model](modelOps)
-
-				q_model.model_update = model.model
-				q_model.set_weights(model.get_weights())
+					
+				if 'shared_model' in kargs and kargs['shared_model']:
+					q_model = model
+				else:
+					q_model = globals()[args.model](modelOps)
+					q_model.model_update = model.model
+					q_model.set_weights(model.get_weights())
 				summary_writer = tf.summary.FileWriter(args.logdir + '/thread-'+str(threadId), K.get_session().graph) if not args.logdir is None else None
 
 				agentOps = DqnAgentOps()
@@ -132,11 +135,15 @@ def run_a3c(**kargs):
 				else:
 					replay_buffer = ReplayBuffer(args.replay_buffer_size, modelOps.AGENT_HISTORY_LENGTH, args.update_frequency, args.replay_start_size, args.batch_size)
 
-				agent = DqnAgent(env.action_space, q_model, replay_buffer, rewproc, agentOps, summary_writer, model_eval=model_eval) #
+				#print(kargs['agent'])
+				if kargs['agent'] == 'ActorCriticAgent':
+					agent = ActorCriticAgent(env.action_space, q_model, replay_buffer, rewproc, agentOps, summary_writer, ac_model_update=model) #
+				else:
+					agent = DqnAgent(env.action_space, q_model, replay_buffer, rewproc, agentOps, summary_writer, model_eval=model_eval) #
 
 				egreedyAgent = None
 				
-				if threadId > 0: # first thread is for testing
+				if threadId > 0 and kargs['agent'] <> 'ActorCriticAgent': # first thread is for testing
 					egreedyOps = EGreedyOps()
 					egreedyOps.REPLAY_START_SIZE = replay_buffer.REPLAY_START_SIZE
 					#egreedyOps.FINAL_EXPLORATION_FRAME = int(args.egreedy_final_step / args.thread_count)				
@@ -170,7 +177,7 @@ def run_a3c(**kargs):
 			global model, model_eval
 			with tLock:
 				T = T + 1
-				if T % target_network_update_freq == 0:
+				if T % target_network_update_freq == 0 and kargs['agent'] <> 'ActorCriticAgent':
 					#print('CLONE TARGET: ' + str(T))
 					model_eval.set_weights(model.get_weights())
 					for agent in agents:

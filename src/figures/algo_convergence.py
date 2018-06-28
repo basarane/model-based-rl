@@ -12,14 +12,14 @@ import shutil
 import os
 
 def run_dqn_thread(baseDir, runNo, args, max_episode, test_only):
-	init_nn_library(True, '1')
+	init_nn_library(True, args['gpu'])
 	if not test_only:
 		runner, _ = run_dqn(**args)
 		runner.run()
 	run_test('dqn', args, baseDir, runNo, max_episode)
 
 def run_a3c_thread(baseDir, runNo, args, max_episode, test_only):
-	init_nn_library(True, '1')
+	init_nn_library(True, args['gpu'])
 	if not test_only:
 		stats = run_a3c(**args)
 	#with open(baseDir + '/test-' + str(runNo)  + '/final_stats.pkl', 'w') as f:
@@ -27,13 +27,14 @@ def run_a3c_thread(baseDir, runNo, args, max_episode, test_only):
 	run_test('dqn', args, baseDir, runNo, max_episode)
 
 def run_td_thread(baseDir, runNo, args, max_episode, test_only):
-	init_nn_library(True, '1')
+	print('*************GPU: *************** ' + args['gpu'])
+	init_nn_library(True, args['gpu'])
 	if not test_only:
 		stats = run_td(**args)
 	run_test('td', args, baseDir, runNo, max_episode)
 
 def run_td_realtime_thread(baseDir, runNo, args, max_episode, test_only):
-	init_nn_library(True, '1')
+	init_nn_library(True, args['gpu'])
 	if not test_only:
 		runner, _ = run_td_realtime(**args)
 		runner.run()

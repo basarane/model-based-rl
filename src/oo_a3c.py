@@ -13,7 +13,9 @@ parser.add_argument('--render-step', type=int, default=4, help='Render at this s
 parser.add_argument('--nstep', type=int, default=5, help='step count for n-step q learning')
 parser.add_argument('--atari', type=bool, default=False, help='true if env is atari game')
 parser.add_argument('--model', type=str, default='A3CModel', help='class name for q-model')
+parser.add_argument('--shared-model', type=bool, default=False, help='use shared model (shared rmsprop)')
 parser.add_argument('--learning-rate', type=float, default=0.00025, help='learning rate')
+parser.add_argument('--gpu', type=str, default=None, help='Gpu to use (none for cpu)')
 parser.add_argument('--target-network-update', type=int, default=10000, help='target network update feq')
 parser.add_argument('--egreedy-props', type=float, nargs='*', default=[0.4, 0.3, 0.3], help='multiple egreedy props')
 parser.add_argument('--egreedy-final', type=float, nargs='*', default=[0.1, 0.01, 0.5], help='multiple egreedy final exploration')
@@ -26,6 +28,7 @@ parser.add_argument('--replay-start-size', type=int, default=int(50000), help='r
 parser.add_argument('--batch-size', type=int, default=int(32), help='batch size')
 parser.add_argument('--max-step', type=int, default=int(1e10), help='max step')
 parser.add_argument('--save-interval', type=int, default=50000, help='save interval')
+parser.add_argument('--agent', type=str, default='DqnAgent', help='agent type: DqnAgent (nstep Q), ActorCriticAgent (A3C)')
 
 args = parser.parse_args()
 

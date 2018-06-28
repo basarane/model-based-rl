@@ -7,6 +7,7 @@ from PIL import Image
 import sys
 
 from utils.summary_writer import SummaryWriter
+from keras.utils import to_categorical
 
 class Agent(object):
 	def __init__(self, action_space, ops):
@@ -182,6 +183,126 @@ class DqnAgent(Agent, RunnerListener):
 		self.losses = []
 		self.add_stat('reward', (self.total_step_count, reward))
 
+class ActorCriticAgent(Agent, RunnerListener):
+	def __init__(self, action_space, ac_model, sampler, rewproc, ops, sw = None, ac_model_update = None):
+		super(ActorCriticAgent, self).__init__(action_space, ops)
+		self.ac_model = ac_model
+		if ac_model_update is None:
+			self.ac_model_update = ac_model
+		else:
+			self.ac_model_update = ac_model_update
+		self.sampler = sampler
+		self.total_step_count = 0
+		self.losses = []
+		self.rewproc = rewproc
+		self.sw = SummaryWriter(sw, ['Episode reward', 'Loss Total', 'Loss Actor', 'Loss Critic'])
+	def act(self, observation):
+		observation = np.array([observation])
+		#print(observation.shape, observation)
+		prediction = self.ac_model.model_actor.predict(observation)[0]
+		action = np.random.choice(range(self.action_space.n), p=prediction)
+		return action
+		
+	def on_step(self, ob, action, next_ob, reward, done):
+		self.total_step_count += 1
+		if self.sampler is not None and self.ops.mode == "train":
+			if self.sampler.has_sample():
+				samples = self.sampler.get_sample()
+				current_states = [a['current_state'] for a in samples]
+				next_states = [a['next_state'] for a in samples]
+
+				#basedir = '/host/PhD/reinforcement-learning/2-cartpole/5-a3c/data/'
+				#self.ac_model.model_critic.load_weights(basedir + 'critic0.h5')
+				#self.ac_model.model_actor.load_weights(basedir + 'actor0.h5')
+				#self.ac_model_update.model_critic.load_weights(basedir + 'critic0.h5')
+				#self.ac_model_update.model_actor.load_weights(basedir + 'actor0.h5')
+				#dump = np.load(basedir + "dump0.npz")
+                #
+				#current_states = dump['states']
+				#next_states = dump['states']
+				#actions = dump['actions']
+				#rewards = dump['rewards']
+				#print(dump.keys())
+				#samples = range(current_states.shape[0])
+				
+				#target = self.ac_model.q_value(current_states)
+				target = self.ac_model.model_critic.predict_on_batch(np.array(current_states))
+				next_value = self.ac_model.model_critic.predict_on_batch(np.array(next_states))
+				discounted_return = np.zeros((len(samples),), dtype='f')
+				
+				R = 0
+				reward_action = np.zeros((len(samples),self.action_space.n), dtype='f')
+				#print(len(samples))
+				for I in reversed(xrange(len(samples))):
+					transition = samples[I]
+					action = transition['action']
+					reward = transition['reward']
+					reward_action[I] = np.array(to_categorical(action,num_classes=self.action_space.n), dtype='f').flatten().squeeze().reshape((1, self.action_space.n))
+					# @ersin - <500 is added for rlcode cartpole test
+					done = transition['done'] #and len(samples)<500
+					
+					#reward_action[I] = actions[I]
+					#reward = rewards[I]
+					#done = I == len(samples)-1
+					
+					if self.rewproc is not None:
+						reward = self.rewproc.preprocess(reward)
+					if (self.sampler.nstep() and I==len(samples)-1) or not self.sampler.nstep():
+						R = next_value[I]
+					
+					if done:
+						R = reward
+					else:
+						R = reward + self.ops.DISCOUNT_FACTOR * R   #after double DQN
+					discounted_return[I] = R
+					
+				target = np.reshape(target, (target.shape[0],))
+				#print('train_step', current_states, reward_action, discounted_return - target, discounted_return)
+
+				loss1 = self.ac_model_update.model_actor.manual_optimizer([current_states, reward_action, discounted_return - target])
+				loss2 = self.ac_model_update.model_critic.manual_optimizer([current_states, discounted_return])
+				
+				if self.ac_model_update is not self.ac_model:
+					print('different ac3 update model')
+					self.ac_model.set_weights(self.ac_model_update.get_weights())
+				#print('R', discounted_return)
+				#print(loss1, loss2)
+				loss1 = loss1[0] / len(samples)
+				loss2 = loss2[0] / len(samples)
+				
+				#print(dump['values'])
+				#print(target)
+                #
+				#print(dump['discounted_rewards'])
+				#print(discounted_return)
+				#
+				#print(dump['advantages'])
+				#print(discounted_return - target)
+                #
+				#print(dump['loss1'])
+				#print(loss1)
+				#
+				#print(dump['loss2'])
+				#print(loss2)
+                #
+				#sys.exit()
+				
+				res = [loss1 + loss2, loss1, loss2]
+				self.losses.append(res)
+				self.update_count += 1
+	def on_episode_start(self):
+		self.update_count = 0
+	def on_episode_end(self, reward, step_count):
+		if len(self.losses)>0:
+			x = np.array(self.losses)
+			aver_loss = x.sum(axis=0) / self.update_count
+		else:
+			aver_loss = 0
+		print('Episode end', reward, step_count, self.total_step_count, aver_loss)
+		self.update_count = 0
+		self.sw.add([reward, aver_loss[0], aver_loss[1], aver_loss[2]], self.total_step_count)
+		self.losses = []
+		self.add_stat('reward', (self.total_step_count, reward))
 		
 from env_model.model import TDNetwork
 
@@ -217,11 +338,11 @@ class VAgent(Agent, RunnerListener):
 	def act(self, observation):
 		next_obs = self.env_model.predict_next([observation])
 		#print(next_obs)
-		prediction = np.zeros(self.ops.ACTION_COUNT, dtype='float')
-		for I in range(self.ops.ACTION_COUNT):
+		prediction = np.zeros(self.action_space.n, dtype='float')
+		for I in range(self.action_space.n):
 			#@ersin - normalde rewardi da eklemek gerekir asagidaki gibi, simdilik eskisi gibi birakiyorum
-			r = next_obs[self.ops.ACTION_COUNT][0][I]
-			done = next_obs[self.ops.ACTION_COUNT+1+I][0][0]
+			r = next_obs[self.action_space.n][0][I]
+			done = next_obs[self.action_space.n+1+I][0][0]
 			#print(r, done)
 			#@ersin buraya kod eklemisim CartPole icin
 			#prediction[I] = (r*100 if r<0 else r) + (1-done)*0.99*self.v_model.v_value(next_obs[I])[0]

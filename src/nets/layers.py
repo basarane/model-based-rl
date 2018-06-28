@@ -3,6 +3,12 @@ from keras import backend as K
 from keras.engine.topology import Layer
 from keras.initializers import RandomUniform, Initializer, Orthogonal, Constant
 import numpy as np
+from keras.layers import Lambda
+
+import tensorflow as tf
+def printLayer(x, message):
+	#return Lambda(lambda x: K.print_tensor(x, message))(x)
+	return Lambda(lambda x: tf.Print(x, [x], message=message, summarize=1000, first_n = 2))(x)
 
 class InitCentersRandom(Initializer):
     """ Initializer for initialization of centers of RBF network

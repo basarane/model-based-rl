@@ -6,6 +6,7 @@ from optimizers import DqnRMSprop
 from loss import huber_loss, huber_loss_mse
 import numpy as np
 import keras.backend as K
+from nets.layers import printLayer
 
 def init_nn_library(use_gpu = True, gpu_id = "0", memory_fraction = 0.3):
 	if use_gpu:
@@ -152,11 +153,13 @@ class DQNModel(QModel):
 		return DQNModel(self.ops, m)
 
 		
-class A3CModel(DQNModel):
+#class A3CModel(DQNModel):
+# renamed
+class DQNModel_AsyncQ(DQNModel):
 	def __init__(self, ops = None, model = None):
-		super(A3CModel, self).__init__(ops, model)
+		super(DQNModel_AsyncQ, self).__init__(ops, model)
 	def get_model(self):
-		print('*************GET MODEL A3C ***********************')
+		print('*************GET MODEL DQNModel_AsyncQ ***********************')
 		input_shape=(self.ops.AGENT_HISTORY_LENGTH,) + self.ops.INPUT_SIZE
 		input = Input(shape=input_shape, name='observation')
 		x = Permute((2,3,1))(input)
@@ -184,6 +187,130 @@ class A3CModel(DQNModel):
 		#model.compile(optimizer=keras.optimizers.Adam(lr=LEARNING_RATE),loss='mse')
 		return model
 		
+class ActorCriticModel(object):
+	def __init__(self, ops = None, model = None):
+		#super(ActorCriticModel, self).__init__(ops, model)
+		self.ops = ops
+		if model is None:
+			self.model_actor, self.model_critic, self.model = self.get_model()
+		else:
+			self.model_actor, self.model_critic, self.model = model
+	def get_network(self):
+		raise NotImplementedException()
+	def get_optimizer(self):
+		return Adam(lr=0.001)
+	def get_model(self):
+		print('*************GET MODEL ActorCriticModel *********************** ' + str(self.ops.INPUT_SIZE))
+		input, pi, V = self.get_network()
+		
+		def actor_optimizer():
+			a_t = K.placeholder(shape=[None, self.ops.ACTION_COUNT])
+			A = K.placeholder(shape=(None, ))
+			policy = model_actor.output
+			Lpi = -K.sum(K.log(K.sum(policy*a_t, axis=1) + 1e-10) * K.stop_gradient(A))
+			LH = K.sum(K.sum(pi * K.log(policy + 1e-10), axis=1))
+			L = Lpi + 0.01 * LH
+			
+			optimizer = self.get_optimizer()
+			updates = optimizer.get_updates(model_actor.trainable_weights, [], L)
+			train = K.function([model_actor.input, a_t, A], [L], updates=updates)
+			return train
+		def critic_optimizer():
+			R = K.placeholder(shape=(None,))
+			critic = model_critic.output
+			#critic = K.print_tensor(critic, message='critic: ')
+			#critic = printLayer(critic,'critic_output')
+			Lv = K.mean(K.square(R - critic))
+			Lv = K.sum(Lv)
+			#Lv = printLayer(Lv,'loss')
+
+			#Lv = K.print_tensor(Lv, message='Lv: ')
+			optimizer = self.get_optimizer()
+			updates = optimizer.get_updates(model_critic.trainable_weights, [], Lv)
+			train = K.function([model_critic.input, R], [Lv], updates=updates)
+			return train		
+		model_actor = Model(inputs=[input], outputs=[pi])
+		model_critic = Model(inputs=[input], outputs=[V])
+		model = Model(inputs=[input], outputs=[pi, V])
+		model_actor._make_predict_function()
+		model_critic._make_predict_function()
+		model._make_predict_function()
+		model_actor.manual_optimizer = actor_optimizer()
+		model_critic.manual_optimizer = critic_optimizer()
+		print('Actor Model')
+		print(model_actor.summary())
+		print('Critic Model')
+		print(model_critic.summary())
+		print('Complete Model')
+		print(model.summary())
+		return model_actor, model_critic, model
+	# bu methodlar degisecek
+	#def q_value(self, state):
+	#	state = np.array(state, dtype='f')/255.0
+	#	return self.model.predict_on_batch(state)
+	#def q_update(self, state, target):
+	#	state = np.array(state, dtype='f')/255.0
+	#	loss = self.model_update.train_on_batch(state, target)
+	#	if self.model_update is not self.model:
+	#		self.model.set_weights(self.model_update.get_weights())
+	#	return loss
+	def get_weights(self):
+		return self.model.get_weights()
+	def set_weights(self, w):
+		self.model.set_weights(w)
+	def clone_model(self):
+		m = self.get_model()
+		m[2].set_weights(self.get_weights())
+		return m
+	def clone(self):
+		m = self.clone_model()
+		return ActorCriticModel(self.ops, m)
+		
+class CartPoleActorCriticModel(ActorCriticModel):
+	def __init__(self, ops = None, model = None):
+		super(CartPoleActorCriticModel, self).__init__(ops, model)
+	def get_network(self):
+		# @ersin - Atari'de AGENT_HISTORY_LENGTH eklenmeli
+		input_shape = self.ops.INPUT_SIZE  #+ (self.ops.AGENT_HISTORY_LENGTH,)
+		input = Input(shape=input_shape, name='observation')
+		x = input
+		#x = Conv2D(filters=16,kernel_size=8,strides=4,padding="valid",activation="relu", name='layer1')(x)
+		#x = Conv2D(filters=32,kernel_size=4,strides=2,padding="valid",activation="relu", name='layer2')(x)
+		##x = Permute((3,1,2))(x)
+		#x = Flatten()(x)
+		#x = Dense(256,activation="relu")(x)
+		x = Dense(24,activation="relu", kernel_initializer='glorot_uniform')(x)
+		#x = Dense(24,activation="relu")(x)
+		pi_hidden = Dense(24,activation="relu", kernel_initializer='glorot_uniform')(x)
+		V_hidden = Dense(24,activation="relu", kernel_initializer='he_uniform')(x)
+		pi = Dense(self.ops.ACTION_COUNT,activation="softmax", kernel_initializer='glorot_uniform')(pi_hidden)
+		V = Dense(1, kernel_initializer='he_uniform')(V_hidden)
+		return input, pi, V
+	def clone(self):
+		m = self.clone_model()
+		return CartPoleActorCriticModel(self.ops, m)
+	
+class AtariActorCriticModel(ActorCriticModel):
+	def __init__(self, ops = None, model = None):
+		super(AtariActorCriticModel, self).__init__(ops, model)
+	def get_network(self):
+		input_shape = (self.ops.AGENT_HISTORY_LENGTH,) + self.ops.INPUT_SIZE 
+		input = Input(shape=input_shape, name='observation')
+		x = Permute((2,3,1))(input)
+		x = Conv2D(filters=16,kernel_size=8,strides=4,padding="valid",activation="relu", name='layer1')(x)
+		x = Conv2D(filters=32,kernel_size=4,strides=2,padding="valid",activation="relu", name='layer2')(x)
+		x = Flatten()(x)
+		x = Dense(256,activation="relu")(x)
+		pi = Dense(self.ops.ACTION_COUNT,activation="softmax")(x)
+		V = Dense(1)(x)
+		return input, pi, V
+	def get_optimizer(self):
+		return RMSprop(lr=0.00025, rho=0.99, epsilon=0.01)
+	def clone(self):
+		m = self.clone_model()
+		return AtariActorCriticModel(self.ops, m)		
+
+	
 class CartPoleModel(QModel):
 	def __init__(self, ops = None, model = None):
 		super(CartPoleModel, self).__init__(ops, model)

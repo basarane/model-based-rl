@@ -4,6 +4,7 @@ import keras.backend as K
 import tensorflow as tf 
 from nets.net import init_nn_library
 from agents.agent import VAgent
+from utils.misc import ParameterDecay
 
 def run_td(**kargs):
 	if kargs['output_dir'] is None and kargs['logdir'] is not None:
@@ -12,7 +13,10 @@ def run_td(**kargs):
 	from collections import namedtuple
 	args = namedtuple("TDParams", kargs.keys())(*kargs.values())
 
-	init_nn_library(True, "1")
+	target_network_update = ParameterDecay(args.target_network_update)
+	
+	if 'dont_init_tf' in kargs and not kargs['dont_init_tf']:
+		init_nn_library(True, "1")
 
 	env = get_env(args.game, args.atari, args.env_transforms, kargs['monitor_dir'] if 'monitor_dir' in kargs else None)
 
@@ -41,9 +45,7 @@ def run_td(**kargs):
 
 	import scipy.stats as stats
 
-	exponent = 2
-	if 'td_exponent' in kargs and kargs['td_exponent'] is not None:
-		exponent = kargs['td_exponent']
+	td_exponent = ParameterDecay(kargs['td_exponent'] if 'td_exponent' in kargs and kargs['td_exponent'] is not None else 2)
 	
 	for I in xrange(args.max_step):
 		#batch = np.random.uniform([-4.8, -5, -0.48, -5], [4.8, 5, 0.48, 5], size=(args.batch_size,4))
@@ -55,7 +57,7 @@ def run_td(**kargs):
 		td_errors = td_model.test(samples).flatten()
 		props = np.abs(td_errors)
 		#props = np.multiply(props, props)
-		props = np.power(props, exponent)
+		props = np.power(props, td_exponent())
 		props = props / props.sum()
 		idxs = np.random.choice(samples.shape[0], args.batch_size, True, props)
 		batch = {
@@ -67,7 +69,9 @@ def run_td(**kargs):
 		loss = td_model.train(batch['current'])
 		sw.add([loss], I)
 		network_saver.on_step()
-		if I % args.target_network_update == 0:
+		td_exponent.on_step()
+		target_network_update.on_step()
+		if target_network_update.is_step() == 0:
 			td_model.v_model_eval.set_weights(td_model.v_model.get_weights())
 		
 
@@ -78,7 +82,8 @@ def run_td_test(**kargs):
 	from collections import namedtuple
 	args = namedtuple("TDTestParams", kargs.keys())(*kargs.values())
 
-	init_nn_library(True, "1")
+	if 'dont_init_tf' in kargs and not kargs['dont_init_tf']:
+		init_nn_library(True, "1")
 
 	#env = gym_env(args.game)
 	print('Monitor dir', kargs['monitor_dir'] if 'monitor_dir' in kargs else None)

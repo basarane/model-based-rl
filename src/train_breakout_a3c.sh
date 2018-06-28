@@ -1,0 +1,2 @@
+rm test_breakout_a3c/a3c-1 -rf
+python -B oo_a3c.py Breakout --atari True --model AtariActorCriticModel --agent ActorCriticAgent --learning-rate 0.00025 --target-network-update 5000 --egreedy-final 0.01 --egreedy-decay 0.9999 0.999 0.998 --egreedy-props 0.4 0.3 0.3 --replay-start-size 1000 --replay-buffer-size 20000 --batch-size 64 --update-frequency 1 --thread-count 16 --nstep 5 --max-step 10000000 --shared-model True --gpu 0 --logdir test_breakout_a3c/a3c-1

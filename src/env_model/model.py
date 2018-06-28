@@ -3,7 +3,7 @@ from keras.layers import Input, Dense, Concatenate, Add, Subtract, Lambda, Multi
 from keras import Model
 from keras.optimizers import Adam, RMSprop, SGD
 from keras.initializers import RandomUniform, Constant
-from nets.layers import RBFLayer
+from nets.layers import RBFLayer, printLayer
 import numpy as np 
 import keras
 import keras.backend as K
@@ -420,6 +420,8 @@ def output_of_lambda(input_shape):
 
 def my_max(x):
     return K.max(x, axis=-1, keepdims=True)
+def my_argmax(x):
+    return K.cast(K.argmax(x, axis=-1),'float32')
 
 class VNetwork(object):
 	def __init__(self, ops):
@@ -456,6 +458,26 @@ class CartPoleVNetwork(VNetwork):
 		new_model.set_weights(self.get_weights())
 		return new_model
 	
+class MountainCarVNetwork(VNetwork):
+	def __init__(self, ops):
+		super(MountainCarVNetwork, self).__init__(ops)
+	def get_model(self):
+		input_shape=self.ops.INPUT_SIZE
+		input = Input(shape=input_shape, name='observation')
+		x = input
+		x = Dense(512,activation="relu")(x) #, kernel_initializer='he_uniform'
+		x = Dense(512,activation="relu")(x) #, kernel_initializer='he_uniform'
+		x = Dense(512,activation="relu")(x) #, kernel_initializer='he_uniform'
+		v = Dense(1)(x) #activation="relu", , kernel_initializer='he_uniform'
+		model = Model(inputs=[input], outputs=[v])
+		my_optimizer = RMSprop(lr=self.ops.LEARNING_RATE)
+		model.compile(optimizer=my_optimizer,loss='mse')
+		return model
+	def clone(self):
+		new_model = MountainCarVNetwork(self.ops)
+		new_model.set_weights(self.get_weights())
+		return new_model	
+	
 class LineVNetwork(VNetwork):
 	def __init__(self, ops):
 		super(LineVNetwork, self).__init__(ops)
@@ -481,13 +503,9 @@ class LineVNetwork(VNetwork):
 		new_model.set_weights(self.get_weights())
 		return new_model	
 	
-import tensorflow as tf
-def printLayer(x, message):
-	#return Lambda(lambda x: K.print_tensor(x, message))(x)
-	return Lambda(lambda x: tf.Print(x, [x], message=message, summarize=1000, first_n = 2))(x)
-	
 class TDNetwork(object):
-	def __init__(self, env_model, v_model, env_ops):
+	def __init__(self, env_model, v_model, env_ops, include_best_action=False):
+		self.include_best_action = include_best_action 
 		self.env_model = env_model
 		self.ops = env_ops
 		self.v_model = v_model
@@ -549,7 +567,8 @@ class TDNetwork(object):
 		est_v = Add()([reward, done_fix])
 		if debug:
 			est_v = printLayer(est_v, message='est_v')
-		est_max_v = Lambda(my_max, output_shape=output_of_lambda)(est_v)
+		est_max_v = Lambda(my_max, output_shape=output_of_lambda,name='est_v')(est_v)
+		est_best_action = Lambda(my_argmax, output_shape=output_of_lambda,name='best_act')(est_v)
 		if debug:
 			est_max_v = printLayer(est_max_v, message='est_max_v')
 		# disable learning of value func within max
@@ -559,7 +578,10 @@ class TDNetwork(object):
 		if debug:
 			td_error = printLayer(td_error, message='td_error')
 		#td_error = v
-		td_model = Model(inputs=[input], outputs=[td_error])
+		if self.include_best_action:
+			td_model = Model(inputs=[input], outputs=[td_error, est_best_action])
+		else:
+			td_model = Model(inputs=[input], outputs=[td_error])
 		#my_optimizer = Adam(lr=self.ops.LEARNING_RATE)
 		my_optimizer = RMSprop(lr=self.ops.LEARNING_RATE)
 		td_model.compile(optimizer=my_optimizer,loss='mse')
