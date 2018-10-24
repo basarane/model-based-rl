@@ -55,7 +55,7 @@ best_act = td.td_model.get_layer('best_act').output
 get_best_act = K.function([td.td_model.input], [best_act])
 
 
-basedir = 'td_offline_v_change_mountaincar7-8'
+basedir = 'td_offline_v_change_mountaincar9-12'
 if os.path.exists(basedir):
 	shutil.rmtree(basedir)
 os.makedirs(basedir)
@@ -96,11 +96,11 @@ def plot_log(fname):
 	s['done'][a==1] = res[5][a==1]
 	s['done'][a==2] = res[6][a==2]
 	
-	for step,ID in zip(range(100, 50001, 100), range(0, 10000)):
+	for step,ID in zip(range(100, 10001, 100), range(0, 10000)):
 		#v_model.model.load_weights('../test_cartpole_td/test39/weights_{}.h5'.format(step))
-		v_model.model.load_weights('algo_convergence_mountain_car7/td-8/train-0/weights_{}.h5'.format(step))
+		v_model.model.load_weights('algo_convergence_mountain_car9/td-12/train-0/weights_{}.h5'.format(step))
 		if td is not None:
-			td.v_model_eval.model.load_weights('algo_convergence_mountain_car7/td-8/train-0/weights_{}.h5'.format(step))
+			td.v_model_eval.model.load_weights('algo_convergence_mountain_car9/td-12/train-0/weights_{}.h5'.format(step))
 		s['qvalue'] = np.squeeze(v_model.v_value(s['current'])) #[:,1]#
 		ns = env_model.predict_next(z)
 		best_acts = get_best_act([z])[0]

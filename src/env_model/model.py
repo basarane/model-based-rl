@@ -423,6 +423,10 @@ def my_max(x):
 def my_argmax(x):
     return K.cast(K.argmax(x, axis=-1),'float32')
 
+def get_grad(x):
+    return K.log(1+K.abs(K.sum(K.gradients(x[0], x[1])[0], axis=1)))
+	#return K.sum(x[1], axis=1)
+
 class VNetwork(object):
 	def __init__(self, ops):
 		self.ops = ops
@@ -504,12 +508,14 @@ class LineVNetwork(VNetwork):
 		return new_model	
 	
 class TDNetwork(object):
-	def __init__(self, env_model, v_model, env_ops, include_best_action=False):
+	def __init__(self, env_model, v_model, env_ops, include_best_action=False, derivative_coef = 0):
 		self.include_best_action = include_best_action 
 		self.env_model = env_model
 		self.ops = env_ops
 		self.v_model = v_model
 		self.v_model_eval = v_model.clone()
+		self.include_derivative = derivative_coef>0
+		self.derivative_coef = derivative_coef
 		self.td_model = self.get_model()
 	def get_model(self):
 		debug = False
@@ -532,9 +538,9 @@ class TDNetwork(object):
 		next_v = []
 		for I in range(self.ops.ACTION_COUNT):
 			#@ersin - use different eval network as in DQN
-			one_v = self.v_model_eval.model(env_output[I])
-			#one_v = self.v_model.model(env_output[I])
-			one_v.trainable = False
+			#one_v = self.v_model_eval.model(env_output[I])
+			#one_v.trainable = False
+			one_v = self.v_model.model(env_output[I])
 			next_v.append(one_v)
 		next_v_tensor = Concatenate()(next_v)
 		#next_v_tensor = Dropout(0.5)(next_v_tensor)
@@ -575,20 +581,35 @@ class TDNetwork(object):
 		#est_max_v.trainable = False
 		#@ersin - test icin cikartildi - geri ekle
 		td_error = Subtract()([v, est_max_v])
+		print(input, td_error)
+		
+		if self.include_derivative:
+			grad_wrt_input = Lambda(get_grad, output_shape=output_of_lambda, name='grad_diff')([td_error, input])
+			print(grad_wrt_input)
+
 		if debug:
 			td_error = printLayer(td_error, message='td_error')
 		#td_error = v
+
 		if self.include_best_action:
 			td_model = Model(inputs=[input], outputs=[td_error, est_best_action])
+		elif self.include_derivative:
+			td_model = Model(inputs=[input], outputs=[td_error, grad_wrt_input])
 		else:
 			td_model = Model(inputs=[input], outputs=[td_error])
 		#my_optimizer = Adam(lr=self.ops.LEARNING_RATE)
 		my_optimizer = RMSprop(lr=self.ops.LEARNING_RATE)
-		td_model.compile(optimizer=my_optimizer,loss='mse')
+		loss_weights = [1]
+		if self.include_derivative or self.include_best_action:
+			loss_weights.append(self.derivative_coef)
+		td_model.compile(optimizer=my_optimizer,loss='mse', loss_weights=loss_weights)
 		#td_model.compile(optimizer=my_optimizer,loss=huber_loss_mse)
 		return td_model
 	def train(self, state):
-		return self.td_model.train_on_batch(state, np.zeros((len(state), 1), dtype='f'))
+		if self.include_derivative:
+			return self.td_model.train_on_batch(state, [np.zeros((len(state), 1), dtype='f'), np.zeros((len(state), 1), dtype='f')])
+		else:
+			return self.td_model.train_on_batch(state, np.zeros((len(state), 1), dtype='f'))
 	def test(self, state):
 		return self.td_model.predict_on_batch(state)
 

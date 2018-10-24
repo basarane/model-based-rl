@@ -31,7 +31,7 @@ def run_td(**kargs):
 	v_model = globals()[args.vmodel](envOps)
 
 	import numpy as np
-	td_model = TDNetwork(env_model.model, v_model, envOps)
+	td_model = TDNetwork(env_model.model, v_model, envOps, False, kargs['derivative_coef'] if 'derivative_coef' in kargs else 0)
 
 	summary_writer = tf.summary.FileWriter(args.logdir, K.get_session().graph) if not args.logdir is None else None
 	sw = SummaryWriter(summary_writer, ['Loss'])
@@ -54,7 +54,10 @@ def run_td(**kargs):
 		#X = stats.truncnorm((lower - mu) / sigma, (upper - mu) / sigma, loc=mu, scale=sigma)
 		#samples = np.random.uniform([-1], [1], size=(5000,1))
 		samples = np.random.uniform(args.smin, args.smax, size=(args.sample_count,len(args.smin)))
-		td_errors = td_model.test(samples).flatten()
+		res = td_model.test(samples)
+		if isinstance(res, (list,)):
+			res = res[0]
+		td_errors = res.flatten()
 		props = np.abs(td_errors)
 		#props = np.multiply(props, props)
 		props = np.power(props, td_exponent())
@@ -67,6 +70,9 @@ def run_td(**kargs):
 		}
 		#batch = traj.sample(args.batch_size)
 		loss = td_model.train(batch['current'])
+		print(loss)
+		if td_model.include_derivative:
+			loss = loss[0]
 		sw.add([loss], I)
 		network_saver.on_step()
 		td_exponent.on_step()
