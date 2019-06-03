@@ -1,5 +1,5 @@
 
-from env import Env
+from . env import Env
 import numpy as np
 
 class EnvTransform(Env):

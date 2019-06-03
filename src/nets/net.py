@@ -1,21 +1,25 @@
-from initializers import dqn_uniform
-from keras.layers import Input, Permute, ZeroPadding2D, Conv2D, Flatten, Dense, Add, Subtract, Lambda
-from keras import Model
-from keras.optimizers import RMSprop, Adam
-from optimizers import DqnRMSprop
-from loss import huber_loss, huber_loss_mse
+from . initializers import dqn_uniform
+from tensorflow.keras.layers import Input, Permute, ZeroPadding2D, Conv2D, Flatten, Dense, Add, Subtract, Lambda
+from tensorflow.keras import Model
+from tensorflow.keras.optimizers import RMSprop, Adam
+from . optimizers import DqnRMSprop
+from . loss import huber_loss, huber_loss_mse
 import numpy as np
-import keras.backend as K
+import tensorflow.keras.backend as K
 from nets.layers import printLayer
 
-def init_nn_library(use_gpu = True, gpu_id = "0", memory_fraction = 0.3):
+def init_nn_library(use_gpu = True, gpu_id = "0", memory_fraction = 0.1):
 	if use_gpu:
 		import tensorflow as tf
-		from keras.backend.tensorflow_backend import set_session
+		#from tensorflow.keras.backend.tensorflow_backend import set_session
+		from tensorflow.keras.backend import set_session
 		config = tf.ConfigProto(log_device_placement=False)
 		config.gpu_options.per_process_gpu_memory_fraction = memory_fraction
 		config.gpu_options.allow_growth = True
-		config.gpu_options.visible_device_list = gpu_id
+		print(f'Using gpu {gpu_id}')
+		if not gpu_id == 'any':
+			print('Using specific gpu')
+			config.gpu_options.visible_device_list = gpu_id
 		set_session(tf.Session(config=config))
 	else:
 		import os

@@ -1,12 +1,12 @@
 from runner.runner import *
-from keras.layers import Input, Dense, Concatenate, Add, Subtract, Lambda, Multiply, Flatten, Dropout, GaussianNoise
-from keras import Model
-from keras.optimizers import Adam, RMSprop, SGD
-from keras.initializers import RandomUniform, Constant
-from nets.layers import RBFLayer, printLayer
+from tensorflow.keras.layers import Input, Dense, Concatenate, Add, Subtract, Lambda, Multiply, Flatten, Dropout, GaussianNoise
+from tensorflow.keras import Model
+from tensorflow.keras.optimizers import Adam, RMSprop, SGD
+from tensorflow.keras.initializers import RandomUniform, Constant
+from nets.layers import printLayer #RBFLayer, 
 import numpy as np 
-import keras
-import keras.backend as K
+import tensorflow.keras
+import tensorflow.keras.backend as K
 from nets.loss import huber_loss, huber_loss_mse
 from nets.optimizers import DqnRMSprop
 

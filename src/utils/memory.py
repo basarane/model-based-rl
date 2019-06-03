@@ -20,7 +20,7 @@ class RingBuffer(object):
 	def reset(self):
 		self.current = 0
 		self.length = 0
-		self.items = [None for x in xrange(self.max_size)]
+		self.items = [None for x in range(self.max_size)]
 	def __str__(self):
 		return str(self.items[0:100])
 
@@ -57,7 +57,7 @@ class SequentialMemory(object):
 		items = self.getItems(self.buffer.current-1, count)
 		return items
 	def samples(self, MINIBATCH_SIZE, skewed_sampling = False):
-		samples = random.sample(xrange(len(self)), MINIBATCH_SIZE)
+		samples = random.sample(range(len(self)), MINIBATCH_SIZE)
 		if skewed_sampling:
 			by_reward = self.group_by_reward()
 			per_reward = len(by_reward) / MINIBATCH_SIZE
@@ -68,7 +68,7 @@ class SequentialMemory(object):
 			if len(samples) > MINIBATCH_SIZE:
 				samples = samples[0:MINIBATCH_SIZE]
 			elif len(samples) < MINIBATCH_SIZE:
-				samples.extend(random.sample(xrange(len(self)), MINIBATCH_SIZE-len(samples)))
+				samples.extend(random.sample(range(len(self)), MINIBATCH_SIZE-len(samples)))
 		return samples
 	def group_by_reward(self):
 		rewards = set(map(lambda x:None if x is None else x['reward'], self.buffer.items))

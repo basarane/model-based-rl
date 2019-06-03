@@ -7,7 +7,7 @@ from PIL import Image
 import sys
 
 from utils.summary_writer import SummaryWriter
-from keras.utils import to_categorical
+from tensorflow.keras.utils import to_categorical
 
 class Agent(object):
 	def __init__(self, action_space, ops):
@@ -151,7 +151,7 @@ class DqnAgent(Agent, RunnerListener):
 					best_acts = np.argmax(next_value, axis=1)
 				
 				R = 0
-				for I in reversed(xrange(len(samples))):
+				for I in reversed(range(len(samples))):
 					transition = samples[I]
 					action = transition['action']
 					reward = transition['reward']
@@ -233,7 +233,7 @@ class ActorCriticAgent(Agent, RunnerListener):
 				R = 0
 				reward_action = np.zeros((len(samples),self.action_space.n), dtype='f')
 				#print(len(samples))
-				for I in reversed(xrange(len(samples))):
+				for I in reversed(range(len(samples))):
 					transition = samples[I]
 					action = transition['action']
 					reward = transition['reward']

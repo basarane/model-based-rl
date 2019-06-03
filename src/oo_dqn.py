@@ -34,6 +34,7 @@ parser.add_argument('--env-weightfile', type=str, default=None, help='weightfile
 parser.add_argument('--env-reward', type=bool, default=False, help='use the estimated rewards from environment model')
 parser.add_argument('--save-interval', type=int, default=50000, help='save interval')
 parser.add_argument('--monitor-dir', type=str, default=None, help='gym-env monitor directory')
+parser.add_argument('--gpu', type=str, default=None, help='Gpu to use (none for cpu, any for any gpu)')
 
 args = parser.parse_args()
 

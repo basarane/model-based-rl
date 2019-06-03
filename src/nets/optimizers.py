@@ -1,6 +1,6 @@
-from keras import backend as K
-from keras.optimizers import Optimizer
-from keras.legacy import interfaces
+from tensorflow.keras import backend as K
+from tensorflow.keras.optimizers import Optimizer
+#from tensorflow.keras.legacy import interfaces
 
 class DqnRMSprop(Optimizer):
 	"""RMSProp optimizer (DQN Variant).
@@ -35,7 +35,7 @@ class DqnRMSprop(Optimizer):
 		self.initial_decay = decay
 		self.print_layer = print_layer
 
-	@interfaces.legacy_get_updates_support
+	#@interfaces.legacy_get_updates_support
 	def get_updates(self, loss, params):
 		grads = self.get_gradients(loss, params)
 		if self.print_layer >= 0:

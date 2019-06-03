@@ -1,8 +1,8 @@
 import gym
 from gym import wrappers
 
-from env import *
-from env_transform import *
+from . env import *
+from . env_transform import *
 
 def get_env(game, atari = False, env_transforms = [], monitor_dir = None):
 	if atari:

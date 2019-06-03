@@ -11,7 +11,7 @@ from utils.memory import ReplayBuffer, NStepBuffer
 from utils.trajectory_utils import TrajectoryReplay
 from nets.net import *
 import tensorflow as tf
-import keras.backend as K
+import tensorflow.keras.backend as K
 from env_model.model import *
 
 
@@ -27,7 +27,8 @@ def run_dqn(**kargs):
 	args = namedtuple("DQNParams", kargs.keys())(*kargs.values())
 
 	if 'dont_init_tf' not in kargs.keys() or not kargs['dont_init_tf']:
-		init_nn_library(True, "1")
+		#init_nn_library(True, "1")
+		init_nn_library("gpu" in kargs and kargs["gpu"] is not None, kargs["gpu"] if "gpu" in kargs else "1")
 
 	#if args.atari:
 	#	env = gym_env(args.game + 'NoFrameskip-v0')
