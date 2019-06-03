@@ -1,0 +1,69 @@
+yukari_cikma 
+215
+841
+
+carpma 
+29-44
+45-58
+89-104
+136-151
+259-274
+418-432
+494-508
+517-534
+576-591
+599-614
+640-650-664 (cift carpma)
+854-869
+889-905
+920-934
+1003-1021
+1057
+
+29	45 89	136	259	418	479	494	516	576 599 640 854 889 920 1003 1055
+
+
+1055'de 13 (act:up,down)
+1056'da 11 ve 4px asagi 
+1057'de 12 ve 4px asagi
+1058'de 11 ve 4px asagi
+1059'de 12 ve 4px asagi
+1060'de 11 ve 4px asagi
+1061'de 12 ve 4px asagi
+1062'de 11 ve 4px asagi
+1063'de 11 ve sabit
+....
+1070'de 13 ve 2px yukari (act:up)
+***************************
+29'da 11 (act:sabit,up)
+30'da 12 ve 2px yukari
+31'da 11 ve 4px asagi
+32'da 12 ve 4px asagi
+33'da 11 ve 4px asagi
+34'da 12 ve 4px asagi
+35'da 11 ve 4px asagi
+36'da 12 ve 4px asagi
+37'de 12 ve sabit
+...
+44'de 13 ve 2px yukari (act:up)
+***************************
+45'de 11 (act:up,up)
+46'da 12 ve 4px asagi
+47'de 11 ve 4px asagi
+48'de 11 ve sabit (en alta indi)
+...
+58'de 11 ve (act:sabit)
+59'da 12 ve 2px yukari (act:up)
+60'da 13 ve 4px yukari (act:up)
+***************************
+89'da 13 (act:up,up)
+90'da 12 ve 2px yukari
+91'de 11 ve 4px asagi
+92'da 12 ve 4px asagi
+93'de 11 ve 4px asagi
+94'da 12 ve 4px asagi
+95'de 11 ve 4px asagi
+96'da 12 ve 4px asagi
+97'de 12 ve sabit
+...
+104'de 11 ve 2px yukari (act:up)

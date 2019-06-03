@@ -1,0 +1,17 @@
+[[source]]
+name = "pypi"
+url = "https://pypi.org/simple"
+verify_ssl = true
+
+[dev-packages]
+
+[packages]
+pillow = "*"
+gym = {extras = ["atari"],version = "*"}
+xvfbwrapper = "*"
+atari-py = {git = "https://github.com/Kojoley/atari-py.git"}
+tensorflow-gpu = "*"
+comet-ml = "*"
+
+[requires]
+#python_version = "3.6"
