@@ -1,11 +1,11 @@
 from envs.gym_env import get_env
 from env_model.model import *
-import keras.backend as K
+import tensorflow.keras.backend as K
 import tensorflow as tf 
 from nets.net import init_nn_library
 from utils.memory import ReplayBuffer
 from agents.agent import VAgent, EGreedyOps, EGreedyAgent, MultiEGreedyAgent, EGreedyAgentExp
-from td import run_td_test
+from . td import run_td_test
 
 def run_td_realtime(**kargs):
 	if kargs['output_dir'] is None and kargs['logdir'] is not None:

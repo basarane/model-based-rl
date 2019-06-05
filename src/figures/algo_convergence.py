@@ -48,7 +48,7 @@ def run_test(algo, args, baseDir, runNo, max_episode):
 	test_args['max_step'] = 1000000000
 	test_args['logdir'] = baseDir + '/test-' + str(runNo) #'/' + algo +
 	stats = globals()['run_' + algo + '_test'](**test_args)
-	with open(test_args['logdir'] + '/final_stats.pkl', 'w') as f:
+	with open(test_args['logdir'] + '/final_stats.pkl', 'wb') as f:
 		pickle.dump(stats, f)
 
 import time

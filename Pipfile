@@ -12,6 +12,8 @@ xvfbwrapper = "*"
 atari-py = {git = "https://github.com/Kojoley/atari-py.git"}
 tensorflow-gpu = "*"
 comet-ml = "*"
+pydot = "*"
+graphviz = "*"
 
 [requires]
 #python_version = "3.6"

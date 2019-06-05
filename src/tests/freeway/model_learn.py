@@ -58,11 +58,13 @@ if not args.output_path is None:
     #output_path = "test_output_m1/"
     if not os.path.exists(output_path):
         os.makedirs(output_path)
-libroot = Path(os.path.realpath(__file__)).parent.parent.parent 
+libroot = Path(os.path.realpath(__file__)).parent.parent #.parent 
 print('libroot', libroot)
 sys.path.append(str(libroot))
 
 from utils.summary_writer import SummaryWriter
+from utils.preprocess import remove_bg
+
 sw = None
 if not output_path is None:
     summary_writer = tf.summary.FileWriter(output_path, K.get_session().graph) 
@@ -447,13 +449,6 @@ def save_image(outmap, batch_size, fname):
 
 bg = np.array(Image.open(f'images/bg.png'))
 
-def remove_bg(ob):
-    same = (ob[:,:,0] == bg[:,:,0]) & (ob[:,:,1] == bg[:,:,1]) & (ob[:,:,2] == bg[:,:,2])
-    ob = np.concatenate((ob, 255*np.ones((210, 160, 1))), axis=2)
-    ob[same] = 0
-    ob[same,3] = 0
-    ob = ob/255.0
-    return ob
     
 ACTION_REPEAT = 1
 def gameStep(action):
@@ -476,7 +471,7 @@ last_ob = env.reset()
 for I in range(NO_OP):
     last_ob = gameStep(env.action_space.sample())
 last_ob = last_ob[0]
-last_ob = remove_bg(last_ob)
+last_ob = remove_bg(last_ob, bg)
 batch_prev = []
 batch_next = []
 actions = []
@@ -496,11 +491,11 @@ for I in range(1000):
     done = ob[2]
     if done:
         last_ob = env.reset()
-        last_ob = remove_bg(last_ob)
+        last_ob = remove_bg(last_ob, bg)
     else:
         ob = ob[0]
         #Image.fromarray((ob).astype(np.uint8)).save(f'{output_path}step_{I}.png')
-        ob = remove_bg(ob)
+        ob = remove_bg(ob, bg)
         batch_prev.append(last_ob)
         batch_next.append(ob)
         actions.append(action)

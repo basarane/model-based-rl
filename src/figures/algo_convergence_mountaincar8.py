@@ -43,119 +43,120 @@ from algo_convergence import algo_convergence
 import os
 import shutil
 
-basedir = 'algo_convergence_mountain_car8'
+if __name__ == '__main__':
+    basedir = 'algo_convergence_mountain_car8'
 
-algo_convergence(arguments, basedir, [
-	{
-		'algo': 'td',
-		'dir': 'td-9',
-		'args': {
-			'learning_rate': 0.0003,
-			'td_exponent': 2,
-			'target_network_update': 25,
-			'gpu': '0',
-		}
-	},
-	{
-		'algo': 'td',
-		'dir': 'td-10',
-		'args': {
-			'learning_rate': 0.0003,
-			'td_exponent': 2,
-			'target_network_update': 75,
-			'gpu': '0',
-		}
-	},
-	{
-		'algo': 'td',
-		'dir': 'td-11',
-		'args': {
-			'learning_rate': 0.0003,
-			'td_exponent': 2,
-			'target_network_update': 200,
-			'gpu': '0',
-		}
-	},
-	#{
-	#	'algo': 'td',
-	#	'dir': 'td-1',
-	#	'args': {
-	#		'learning_rate': 0.0003,
-	#		'td_exponent': 2,
-	#		'target_network_update': "('linear', 1, 500, 50000)",
-	#		'gpu': '0',
-	#	}
-	#},
-	#{
-	#	'algo': 'td',
-	#	'dir': 'td-2',
-	#	'args': {
-	#		'learning_rate': 0.0003,
-	#		'td_exponent': 1,
-	#		'target_network_update': "('linear', 1, 500, 50000)",
-	#		'gpu': '0',
-	#	}
-	#},
-	#{
-	#	'algo': 'td',
-	#	'dir': 'td-3',
-	#	'args': {
-	#		'learning_rate': 0.0003,
-	#		'td_exponent': 0,
-	#		'target_network_update': "('linear', 1, 500, 50000)",
-	#		'gpu': '0',
-	#	}
-	#},
-	#{
-	#	'algo': 'td',
-	#	'dir': 'td-4',
-	#	'args': {
-	#		'learning_rate': 0.0003,
-	#		'td_exponent': "('linear', 0, 2, 30000)",
-	#		'target_network_update': "('linear', 1, 500, 50000)",
-	#		'gpu': '0',
-	#	}
-	#},
-	#{
-	#	'algo': 'td',
-	#	'dir': 'td-5',
-	#	'args': {
-	#		'learning_rate': 0.0003,
-	#		'td_exponent': "('linear', 0, 2, 10000)",
-	#		'target_network_update': "('linear', 1, 500, 50000)",
-	#		'gpu': '0',
-	#	}
-	#},
-	#{
-	#	'algo': 'td',
-	#	'dir': 'td-6',
-	#	'args': {
-	#		'learning_rate': 0.0003,
-	#		'td_exponent': "('linear', 0, 2, 10000)",
-	#		'target_network_update': "('linear', 1, 100, 50000)",
-	#		'gpu': '1',
-	#	}
-	#},
-	#{
-	#	'algo': 'td',
-	#	'dir': 'td-7',
-	#	'args': {
-	#		'learning_rate': 0.0003,
-	#		'td_exponent': "('linear', 0, 4, 10000)",
-	#		'target_network_update': "('linear', 1, 500, 50000)",
-	#		'gpu': '1',
-	#	}
-	#},
-	#{
-	#	'algo': 'td',
-	#	'dir': 'td-8',
-	#	'args': {
-	#		'learning_rate': 0.0003,
-	#		'td_exponent': "('linear', 0, 1.5, 10000)",
-	#		'target_network_update': "('linear', 1, 50, 50000)",
-	#		'gpu': '1',
-	#	}
-	#},
+    algo_convergence(arguments, basedir, [
+        {
+            'algo': 'td',
+            'dir': 'td-9',
+            'args': {
+                'learning_rate': 0.0003,
+                'td_exponent': 2,
+                'target_network_update': 25,
+                'gpu': '0',
+            }
+        },
+        {
+            'algo': 'td',
+            'dir': 'td-10',
+            'args': {
+                'learning_rate': 0.0003,
+                'td_exponent': 2,
+                'target_network_update': 75,
+                'gpu': '0',
+            }
+        },
+        {
+            'algo': 'td',
+            'dir': 'td-11',
+            'args': {
+                'learning_rate': 0.0003,
+                'td_exponent': 2,
+                'target_network_update': 200,
+                'gpu': '0',
+            }
+        },
+        #{
+        #	'algo': 'td',
+        #	'dir': 'td-1',
+        #	'args': {
+        #		'learning_rate': 0.0003,
+        #		'td_exponent': 2,
+        #		'target_network_update': "('linear', 1, 500, 50000)",
+        #		'gpu': '0',
+        #	}
+        #},
+        #{
+        #	'algo': 'td',
+        #	'dir': 'td-2',
+        #	'args': {
+        #		'learning_rate': 0.0003,
+        #		'td_exponent': 1,
+        #		'target_network_update': "('linear', 1, 500, 50000)",
+        #		'gpu': '0',
+        #	}
+        #},
+        #{
+        #	'algo': 'td',
+        #	'dir': 'td-3',
+        #	'args': {
+        #		'learning_rate': 0.0003,
+        #		'td_exponent': 0,
+        #		'target_network_update': "('linear', 1, 500, 50000)",
+        #		'gpu': '0',
+        #	}
+        #},
+        #{
+        #	'algo': 'td',
+        #	'dir': 'td-4',
+        #	'args': {
+        #		'learning_rate': 0.0003,
+        #		'td_exponent': "('linear', 0, 2, 30000)",
+        #		'target_network_update': "('linear', 1, 500, 50000)",
+        #		'gpu': '0',
+        #	}
+        #},
+        #{
+        #	'algo': 'td',
+        #	'dir': 'td-5',
+        #	'args': {
+        #		'learning_rate': 0.0003,
+        #		'td_exponent': "('linear', 0, 2, 10000)",
+        #		'target_network_update': "('linear', 1, 500, 50000)",
+        #		'gpu': '0',
+        #	}
+        #},
+        #{
+        #	'algo': 'td',
+        #	'dir': 'td-6',
+        #	'args': {
+        #		'learning_rate': 0.0003,
+        #		'td_exponent': "('linear', 0, 2, 10000)",
+        #		'target_network_update': "('linear', 1, 100, 50000)",
+        #		'gpu': '1',
+        #	}
+        #},
+        #{
+        #	'algo': 'td',
+        #	'dir': 'td-7',
+        #	'args': {
+        #		'learning_rate': 0.0003,
+        #		'td_exponent': "('linear', 0, 4, 10000)",
+        #		'target_network_update': "('linear', 1, 500, 50000)",
+        #		'gpu': '1',
+        #	}
+        #},
+        #{
+        #	'algo': 'td',
+        #	'dir': 'td-8',
+        #	'args': {
+        #		'learning_rate': 0.0003,
+        #		'td_exponent': "('linear', 0, 1.5, 10000)",
+        #		'target_network_update': "('linear', 1, 50, 50000)",
+        #		'gpu': '1',
+        #	}
+        #},
 
-], run_count = 1, max_episode = 1, delete_if_exists = False, test_only=False)
- 
+    ], run_count = 1, max_episode = 1, delete_if_exists = False, test_only=False)
+     

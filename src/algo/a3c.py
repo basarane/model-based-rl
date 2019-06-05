@@ -9,7 +9,7 @@ from agents.agent import *
 from utils.memory import ReplayBuffer, NStepBuffer
 from nets.net import *
 import tensorflow as tf
-import keras.backend as K
+import tensorflow.keras.backend as K
 
 import threading
 from threading import Lock
@@ -143,7 +143,7 @@ def run_a3c(**kargs):
 
 				egreedyAgent = None
 				
-				if threadId > 0 and kargs['agent'] <> 'ActorCriticAgent': # first thread is for testing
+				if threadId > 0 and kargs['agent'] != 'ActorCriticAgent': # first thread is for testing
 					egreedyOps = EGreedyOps()
 					egreedyOps.REPLAY_START_SIZE = replay_buffer.REPLAY_START_SIZE
 					#egreedyOps.FINAL_EXPLORATION_FRAME = int(args.egreedy_final_step / args.thread_count)				
@@ -177,7 +177,7 @@ def run_a3c(**kargs):
 			global model, model_eval
 			with tLock:
 				T = T + 1
-				if T % target_network_update_freq == 0 and kargs['agent'] <> 'ActorCriticAgent':
+				if T % target_network_update_freq == 0 and kargs['agent'] != 'ActorCriticAgent':
 					#print('CLONE TARGET: ' + str(T))
 					model_eval.set_weights(model.get_weights())
 					for agent in agents:

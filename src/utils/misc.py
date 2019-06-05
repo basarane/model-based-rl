@@ -23,7 +23,7 @@ class ParameterDecay:
 			self.dynamic_val = self.param[1]
 			if self.param[0] != 'linear' and self.param[0] != 'expo':
 				raise Exception('first parameter must be linear or expo')
-			if len(self.param)<>4:
+			if len(self.param)!=4:
 				raise Exception('4 parameters needed')
 			if self.param[0] == 'expo':
 				self.decay = pow(1.0*self.param[2]/self.param[1],1.0/self.param[3])

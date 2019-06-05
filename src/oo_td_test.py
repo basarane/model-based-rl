@@ -1,3 +1,6 @@
+from comet_ml import Experiment
+experiment = Experiment(api_key="8gFIuv61aMnLn2YmtGHULdr1P", project_name="model_learn", workspace="basarane")
+
 import argparse
 
 parser = argparse.ArgumentParser(description='DQN Training')

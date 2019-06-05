@@ -46,3 +46,10 @@ class PreProPipeline(Preprocessor):
 			image = proc.preprocess(image)
 		return image
 
+def remove_bg(ob, bg):
+    same = (ob[:,:,0] == bg[:,:,0]) & (ob[:,:,1] == bg[:,:,1]) & (ob[:,:,2] == bg[:,:,2])
+    ob = np.concatenate((ob, 255*np.ones((210, 160, 1))), axis=2)
+    ob[same] = 0
+    ob[same,3] = 0
+    ob = ob/255.0
+    return ob
