@@ -5,8 +5,7 @@ import tensorflow as tf
 from nets.net import init_nn_library
 from agents.agent import VAgent
 from utils.misc import ParameterDecay
-from utils.viewer import EnvViewer
-from PIL import Image
+from utils.viewer import EnvViewer, save_image
 
 def run_td(**kargs):
     debug = False
@@ -58,17 +57,6 @@ def run_td(**kargs):
     for layer_idx, layer in enumerate(td_model.td_model.layers):
         print('Layer ', layer_idx, layer.name, layer.shape if hasattr(layer, "shape") else layer.input_shape)
     
-    def save_image(fname, data):
-        for I in range(len(data)):
-            tmp = np.copy(data[I])
-            print(tmp, tmp.shape)
-            tmp = tmp*255
-            tmp[tmp<0] = 0
-            tmp[tmp>255] = 255
-            tmp = tmp.astype(np.uint8)
-            im = Image.fromarray(tmp)
-            im.save(f'{kargs["output_dir"]}/{fname}_{I}.png')
-            
     for I in range(args.max_step):
         #batch = np.random.uniform([-4.8, -5, -0.48, -5], [4.8, 5, 0.48, 5], size=(args.batch_size,4))
         #lower, upper = -1, 1
@@ -92,29 +80,38 @@ def run_td(**kargs):
             count = samples[0].shape[0]
         else:
             count = samples.shape[0]
-        idxs = np.random.choice(count, args.batch_size, True, props)
+        idxs = np.random.choice(count, args.batch_size, False, props)
         batch = {
             #'current': np.random.uniform([-1], [1], size=(args.batch_size,1))
             #'current': X.rvs((args.batch_size,1))
             'current': [a[idxs] for a in samples] if isinstance(samples, list) else samples[idxs]
         }
         #batch = traj.sample(args.batch_size)
+        
+        if debug:
+            # @ersin - freeway icin test kodu
+            old_loss = td_model.test(batch['current'])
+            print(I, old_loss.flatten())
+            decoder_input = [batch['current'][1].astype(np.float32), batch['current'][0].astype(np.float32)]
+            decoded_output = env_model.model_decoder.predict_on_batch(decoder_input)
+            save_image(decoded_output, args.batch_size, f'{kargs["output_dir"]}/{I}_sample')
+        
         loss = td_model.train(batch['current'])
         
         #@ersin - tests
-        if debug:
-            save_image(f'{I}_current_cars',batch['current'][0])
-            save_image(f'{I}_current_tavuks',batch['current'][1])
-            save_image(f'{I}_current_cross',batch['current'][2])
-            save_image(f'{I}_current_carpisma',batch['current'][3])
+        if debug and False:
+            save_image(batch['current'][0], args.batch_size, f'{kargs["output_dir"]}/{I}_current_cars')
+            save_image(batch['current'][1], args.batch_size, f'{kargs["output_dir"]}/{I}_current_tavuks')
+            save_image(batch['current'][2], args.batch_size, f'{kargs["output_dir"]}/{I}_current_cross')
+            save_image(batch['current'][3], args.batch_size, f'{kargs["output_dir"]}/{I}_current_carpisma')
 
             next_state = env_model.predict_next(batch['current'])
 
             for J in range(3):
-                save_image(f'{I}_next_{J}_cars',next_state[0+J*4])
-                save_image(f'{I}_next_{J}_tavuks',next_state[1+J*4])
-                save_image(f'{I}_next_{J}_cross',next_state[2+J*4])
-                save_image(f'{I}_next_{J}_carpisma',next_state[3+J*4])
+                save_image(next_state[0+J*4], args.batch_size, f'{kargs["output_dir"]}/{I}_next_{J}_cars')
+                save_image(next_state[1+J*4], args.batch_size, f'{kargs["output_dir"]}/{I}_next_{J}_tavuks')
+                save_image(next_state[2+J*4], args.batch_size, f'{kargs["output_dir"]}/{I}_next_{J}_cross')
+                save_image(next_state[3+J*4], args.batch_size, f'{kargs["output_dir"]}/{I}_next_{J}_carpisma')
 
         print(loss)
         if td_model.include_derivative:

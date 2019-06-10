@@ -1,6 +1,7 @@
 from runner.runner import *
 import tensorflow as tf
 from tensorflow.keras.layers import Input, Dense, Concatenate, Add, Subtract, Lambda, Multiply, Flatten, Dropout, GaussianNoise
+from tensorflow.keras.layers import Input, Conv2D, Conv2DTranspose, Lambda, Concatenate, Add, BatchNormalization, Reshape, ZeroPadding2D, Cropping2D, Conv1D
 from tensorflow.keras import Model
 from tensorflow.keras.optimizers import Adam, RMSprop, SGD, Nadam
 from tensorflow.keras.initializers import RandomUniform, Constant
@@ -387,7 +388,74 @@ class EnvModelFreewayManual(EnvModel):
     def get_model(self):
         # input, input_action, cross_timer_input, carpisma_timer_input
         #self.model_encoder = tf.keras.models.load_model(f'tests/freeway/test_run_68/6000_model_large_encoder.h5')
-        self.model_transcoder = tf.keras.models.load_model(f'tests/freeway/test_run_m150/0_model_transcoder.h5', custom_objects={'tf': tf, 'custom_loss': custom_loss})
+
+        # *************** TEST CODE BEGIN ****************
+        def channel_slice_function(I,J):
+            def input_slice(x):
+                return x[:,:,:,I:J]
+            return input_slice
+
+        def image_slice_function(s):
+            def input_slice(x):
+                return x[:,s[0][0]:s[0][1],s[1][0]:s[1][1],:]
+            return input_slice
+
+        def get_decoder(input_shape):
+            cc = input_shape[2]
+            input = Input(shape=input_shape, name='encoded_observation')
+            conv_layer_defs = []
+            layers = []
+            for I in range(cc):
+                conv_layer_def = Conv2DTranspose(filters=4, kernel_size=10, strides=1, activation='relu', padding='same',kernel_initializer='glorot_normal')
+                conv_layer_defs.append(conv_layer_def)
+                sliced_input = Lambda(channel_slice_function(I,I+1))(input)
+                layer = conv_layer_def(sliced_input)
+                layers.append(layer)
+            result =  Concatenate(axis=3)(layers)
+            model_decoder = Model(inputs = [input], outputs = [result], name="decoder")
+            return model_decoder, conv_layer_defs
+
+        def merge_tensor(x):
+            # @ersin - bu simple bir algoritma, gerekirse over operator'uyle degistir https://en.wikipedia.org/wiki/Alpha_compositing
+            # UPDATE: degistirildi
+            output_color = x[0][:,:,:,0:3]
+            output_alpha = x[0][:,:,:,3:]
+            for layer in x[1:]:
+                output_alpha_new = output_alpha + layer[:,:,:,3:] * (1-output_alpha)
+                output_alpha_new_fixed = K.switch(K.equal(output_alpha_new,0), output_alpha_new+0.001 ,output_alpha_new)
+                output_color = (output_color * output_alpha + layer[:,:,:,0:3] * layer[:,:,:,3:] * (1-output_alpha))/output_alpha_new_fixed
+                output_alpha = output_alpha_new
+            return K.concatenate([output_color,output_alpha], axis=3)
+            
+        def get_large_decoder(input_shape_orig, deconv_layer_defs, seperate_channels = False):
+            input = Input(shape=input_shape_orig, name='encoded_observation_large')
+            layers = []
+            for I in range(cc):
+                sliced_input = Lambda(channel_slice_function(I,I+1))(input)
+                layer = deconv_layer_defs[I](sliced_input)
+                layers.append(layer)
+            if seperate_channels:
+                result = Concatenate(axis=3)(layers)
+            else:
+                #result = Add()(layers)
+                result = Lambda(merge_tensor)(layers)
+            model_decoder = Model(inputs = [input], outputs = [result], name="decoder_large")
+            return model_decoder
+
+        cc = 13 # car count
+        input_shape_orig = (210,160, cc)
+        sub_range = ((0,20),(0,20))
+        input_shape = (sub_range[0][1] - sub_range[0][0], sub_range[1][1] - sub_range[1][0], cc)
+
+        model_ae_decoder = tf.keras.models.load_model(f'tests/freeway/test_run_68/6000_model_large_decoder.h5')
+        model_decoder, deconv_layer_defs = get_decoder(input_shape)
+
+        model_large_decoder = get_large_decoder(input_shape_orig, deconv_layer_defs)
+        model_large_decoder.set_weights(model_ae_decoder.get_weights())
+        model_ae_decoder = model_large_decoder
+        # *************** TEST CODE END ****************
+
+        self.model_transcoder = tf.keras.models.load_model(f'tests/freeway/test_run_m151/0_model_transcoder.h5', custom_objects={'tf': tf, 'custom_loss': custom_loss})
         inputs = self.model_transcoder.inputs
         # next_state, cross_timer_next, carpisma_timer_next,reward
         outputs = self.model_transcoder.outputs
@@ -421,9 +489,19 @@ class EnvModelFreewayManual(EnvModel):
         
         input_tavuk = Input(shape=(210,3),name='input_tavuk')
         input_car = Input(shape=(160,10),name='input_car')
-        input = Lambda(to_transcoder_input)([input_tavuk, input_car])
         cross_timer_input = Input(shape=inputs[2].shape[1:], name='cross_timer_input')
         carpisma_timer_input = Input(shape=inputs[3].shape[1:], name='carpisma_timer_input')
+        
+        #@ersin - test icin eklendi: iptal ederken alttaki _zero'lari da kaldir
+        #input_car_zero = Lambda(lambda x:x*0)(input_car)
+        #cross_timer_input_zero = Lambda(lambda x:x*0)(cross_timer_input)
+        #carpisma_timer_input_zero = Lambda(lambda x:x*0)(carpisma_timer_input)
+        
+        input_car_zero = input_car
+        cross_timer_input_zero = cross_timer_input
+        carpisma_timer_input_zero = carpisma_timer_input
+
+        input = Lambda(to_transcoder_input)([input_tavuk, input_car_zero])
         
         action_outputs = []
         done_outputs = []
@@ -442,9 +520,15 @@ class EnvModelFreewayManual(EnvModel):
         for I in range(action_count):
             input_action = Lambda(tile_action_batch(I),name=f'input_action_tiled_{I}')(input)
             print("Transcoder Input shapes", input.shape, input_action.shape, cross_timer_input.shape, carpisma_timer_input.shape)
-            layer_outputs = self.model_transcoder([input, input_action, cross_timer_input, carpisma_timer_input])
+            layer_outputs = self.model_transcoder([input, input_action, cross_timer_input_zero, carpisma_timer_input_zero])
             tavuk_output = Lambda(from_transcoder_output_tavuk)(layer_outputs[0])
             car_output = Lambda(from_transcoder_output_car)(layer_outputs[0])
+
+            # @ersin - test icin eklendi
+            #layer_outputs[1] = Lambda(lambda x: x*0)(layer_outputs[1])
+            #layer_outputs[2] = Lambda(lambda x: x*0)(layer_outputs[2])
+            #car_output = Lambda(lambda x: x*0)(car_output)
+            
             action_outputs.extend([car_output, tavuk_output] + layer_outputs[1:3])
             #print(action_output.shape)
             reward_output = layer_outputs[3]
@@ -456,8 +540,17 @@ class EnvModelFreewayManual(EnvModel):
         model = Model(inputs=[input_car, input_tavuk,cross_timer_input,carpisma_timer_input], outputs=action_outputs + [reward_output_concat] + done_outputs, name='freeway_model')
         my_optimizer = Adam(lr=0.001)
         model.compile(optimizer=my_optimizer,loss='mse')
+        # freeway test code
+        decoded_output = model_ae_decoder(input)
+        self.model_decoder = Model(inputs=[input_tavuk, input_car], outputs=[decoded_output])
+        
         return model
+    
     def get_samples(self, N):
+        if not hasattr(self,"sample_var"):
+            self.sample_var = 20
+            self.sample_step = 0
+            
         def sampleCar():
             arr = np.zeros((N,160,10))
             col1 = np.repeat(np.arange(N),10)
@@ -468,9 +561,16 @@ class EnvModelFreewayManual(EnvModel):
         def sampleTavuk():
             arr = np.zeros((N,210,3))
             col1 = np.arange(N)
-            col2 = np.random.randint(22,190+1,N)
+            tl = 22
+            th = 190
+            col2 = np.random.randint(tl,th+1,N)
+            col2 = np.floor(np.abs(np.random.normal(self.sample_step % (th-tl),self.sample_var,N))) + tl
+            while np.sum(col2>th)>0:
+                col2[col2>th] = np.floor(np.abs(np.random.normal(self.sample_step % (th-tl),self.sample_var,np.sum(col2>th)))) + tl
+            col2 = col2.astype(np.int)
             col3 = np.random.randint(0,3,N)
             arr[col1,col2,col3] = 1
+            self.sample_step += 1
             return arr
         def sampleTimer(size,p=0.1):
             arr = np.zeros((N,size,1))
@@ -480,7 +580,7 @@ class EnvModelFreewayManual(EnvModel):
             col2 = np.random.randint(0,size,(count))
             arr[col1,col2] = 1
             return arr
-        return [sampleCar(),sampleTavuk(),sampleTimer(7,0.2),sampleTimer(13,0.5)]
+        return [sampleCar(),sampleTavuk(),sampleTimer(7,0.1),sampleTimer(13,0.2)]
     def predict_next(self, current_state):
         return self.model.predict(current_state)
     def train_next(self, current_state, next_states):
@@ -627,18 +727,56 @@ class FreewayVNetwork(VNetwork):
     
         inputs = []
         flattened_input = []
+        def to_float(shape, zeroed = False):
+            def tmp_fn(x):
+                size = shape[0]
+                channels = shape[1]
+                print(size, channels)
+                ra = np.arange(0,size,1,'float32')/size
+                if channels == 1:
+                    ra = np.flip(ra)
+                ra = np.tile(ra, (channels,1))
+                ra = np.transpose(ra)
+                print(size, channels, ra.shape)
+                w = K.constant(ra)
+                a = x*w
+                if zeroed:
+                    a = a*0
+                #a = K.arange(0, size)
+                #print(a.shape)
+                #a = K.cast(a, 'float32')
+                #print(a.shape)
+                #a = a / K.cast(size, 'float32')
+                #print(a.shape)
+                #a = K.repeat(a, channels)
+                #a = K.permute_dimensions(a,(0,2,1))
+                #a = K.print_tensor(a, 'repeated pos')
+                a = K.sum(a, axis=(1))
+                return a
+            return tmp_fn
+            
         for idx,shape in enumerate(input_shape):
             input = Input(shape=shape, name=f'observation{idx}')
             inputs.append(input)
-            flattened_input.append(Flatten()(input))
+
+            if idx == 1:
+                flattened_input.append(Flatten()(Lambda(to_float(shape))(input)))  # sadece bu kalacak, K.sum test icin eklendi. tum tavuk state'leri ayni kabul edildi
+            else:
+                flattened_input.append(Flatten()(Lambda(to_float(shape, False))(input)))
+            # @ersin - test icin eklendi
+            #if idx == 1:
+            #    flattened_input.append(Flatten()(Lambda(lambda x: K.sum(x,axis=2))(input)))  # sadece bu kalacak, K.sum test icin eklendi. tum tavuk state'leri ayni kabul edildi
+            #else:
+            #    flattened_input.append(Flatten()(Lambda(lambda x: K.sum(x*0, axis=[1,2]))(input))) # K.sum ile tum kullanilmayan input'lar tek input'a indirildi
             
         flattened_input = Concatenate()(flattened_input)
+        print(flattened_input.shape)
     
         x = flattened_input
-        x = Dense(256,activation="relu")(x) #, kernel_initializer='he_uniform'
-        x = Dense(256,activation="relu")(x) #, kernel_initializer='he_uniform'
-        x = Dense(256,activation="relu")(x) #, kernel_initializer='he_uniform'
         #x = Dense(512,activation="relu")(x) #, kernel_initializer='he_uniform'
+        #x = Dense(512,activation="relu")(x) #, kernel_initializer='he_uniform'
+        #x = Dense(512,activation="relu")(x) #, kernel_initializer='he_uniform'
+        x = Dense(256,activation="relu")(x) #, kernel_initializer='he_uniform'
         v = Dense(1)(x) #activation="relu", , kernel_initializer='he_uniform'
         model = Model(inputs=inputs, outputs=[v])
         my_optimizer = RMSprop(lr=self.ops.LEARNING_RATE)

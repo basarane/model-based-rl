@@ -159,6 +159,7 @@ class FreewayTransform(EnvTransform):
         self.tavuk_pos = 46
         self.carpisma_timer = np.zeros((1,13,1))
         self.cross_timer = np.zeros((1,7,1))
+        self.step_count = 0
 
     def transform_observation(self, ob):
         ob = remove_bg(ob, self.bg)
@@ -179,6 +180,8 @@ class FreewayTransform(EnvTransform):
         return self.transform_observation(ob)
     def step(self, action):
         ob, reward, done = self.env.step(action)
+        #Image.fromarray(ob).save(f'freeway_td/test26/{self.step_count+1}_current_frame.png')
         ob = self.transform_observation(ob)
+        self.step_count += 1
         return ob, reward, done
 

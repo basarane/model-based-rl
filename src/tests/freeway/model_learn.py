@@ -58,7 +58,7 @@ if not args.output_path is None:
     #output_path = "test_output_m1/"
     if not os.path.exists(output_path):
         os.makedirs(output_path)
-libroot = Path(os.path.realpath(__file__)).parent.parent #.parent 
+libroot = Path(os.path.realpath(__file__)).parent.parent.parent  #
 print('libroot', libroot)
 sys.path.append(str(libroot))
 
@@ -280,7 +280,7 @@ def get_transcoder(input_shape, action_count, conv_info):
     cars = Lambda(channel_slice_function(0,10))(next_state)
     x0 = 46
     y0 = 190
-    top_crop = 20
+    top_crop = 18 #20 @ersin - en ustte kaliyordu
     bottom_crop = 17
 
     tavuk_top = Lambda(image_slice_function(((0,top_crop),(0,160))))(tavuk)

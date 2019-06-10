@@ -1,6 +1,57 @@
+REM cross: 0.1, carpisma: 0.2
+rm freeway_td/train26 -rf
+pipenv run python -B oo_td.py FreewayDeterministic-v4 --batch-size 4 --max-step 100000 --learning-rate 0.001 --target-network-update 200 --sample-count 10 --env-model EnvModelFreewayManual --vmodel FreewayVNetwork --env-transforms FreewayTransform --save-freq 100 --logdir freeway_td/train26
+
+REM hidden 256'ya cikartildi, carpisma ve cross timer'larin degerleri reverse edildi, sifirlanan her sey kaldirildi (sanirim)
+REM rm freeway_td/train25 -rf
+REM pipenv run python -B oo_td.py FreewayDeterministic-v4 --batch-size 4 --max-step 100000 --learning-rate 0.001 --target-network-update 200 --sample-count 10 --env-model EnvModelFreewayManual --vmodel FreewayVNetwork --env-transforms FreewayTransform --save-freq 100 --logdir freeway_td/train25
+
+REM 32'lik hidden layer eklendi
+REM rm freeway_td/train24 -rf
+REM pipenv run python -B oo_td.py FreewayDeterministic-v4 --batch-size 4 --max-step 100000 --learning-rate 0.001 --target-network-update 200 --sample-count 10 --env-model EnvModelFreewayManual --vmodel FreewayVNetwork --env-transforms FreewayTransform --save-freq 100 --logdir freeway_td/train24
+
+REM pozisyonlar 0 ile 1 arasinda sayilara cevrilip tek input yapildi
+REM rm freeway_td/train23 -rf
+REM pipenv run python -B oo_td.py FreewayDeterministic-v4 --batch-size 4 --max-step 100000 --learning-rate 0.001 --target-network-update 200 --sample-count 10 --env-model EnvModelFreewayManual --vmodel FreewayVNetwork --env-transforms FreewayTransform --save-freq 100 --logdir freeway_td/train23
+
+REM tavuk channel'lari K.sum ile toplanip VModel'e verildi
+REM rm freeway_td/train22 -rf
+REM pipenv run python -B oo_td.py FreewayDeterministic-v4 --batch-size 4 --max-step 100000 --learning-rate 0.001 --target-network-update 200 --sample-count 10 --env-model EnvModelFreewayManual --vmodel FreewayVNetwork --env-transforms FreewayTransform --save-freq 100 --logdir freeway_td/train22
+
+REM network x1'e dusuruldu, tum hidden layer'lar atildi
+REM rm freeway_td/train21 -rf
+REM pipenv run python -B oo_td.py FreewayDeterministic-v4 --batch-size 4 --max-step 100000 --learning-rate 0.001 --target-network-update 200 --sample-count 10 --env-model EnvModelFreewayManual --vmodel FreewayVNetwork --env-transforms FreewayTransform --save-freq 100 --logdir freeway_td/train21
+
+REM sadece tavuk birakildi, arabalar ve timer'lar sifirla carpildi
+REM rm freeway_td/train20 -rf
+REM pipenv run python -B oo_td.py FreewayDeterministic-v4 --batch-size 4 --max-step 100000 --learning-rate 0.001 --target-network-update 200 --sample-count 10 --env-model EnvModelFreewayManual --vmodel FreewayVNetwork --env-transforms FreewayTransform --save-freq 100 --logdir freeway_td/train20
+
+REM sampleTimer(7,0.2),sampleTimer(13,0.5) -> ikisi icin de p=0 yapildi
+REM rm freeway_td/train19 -rf
+REM pipenv run python -B oo_td.py FreewayDeterministic-v4 --batch-size 4 --max-step 100000 --learning-rate 0.001 --target-network-update 200 --sample-count 10 --env-model EnvModelFreewayManual --vmodel FreewayVNetwork --env-transforms FreewayTransform --save-freq 100 --logdir freeway_td/train19
+
+REM tavuk variance=20, mean her bir step'de 0'dan 190-20'ye kadar kaydiriliyor (reverse experience replay gibi), network 512x512x512
+REM rm freeway_td/train18 -rf
+REM pipenv run python -B oo_td.py FreewayDeterministic-v4 --batch-size 4 --max-step 100000 --learning-rate 0.001 --target-network-update 200 --sample-count 10 --env-model EnvModelFreewayManual --vmodel FreewayVNetwork --env-transforms FreewayTransform --save-freq 100 --logdir freeway_td/train18
+
+REM tavuk random'da mean'i shift etmisim, duzeldildi
+REM rm freeway_td/train17 -rf
+REM pipenv run python -B oo_td.py FreewayDeterministic-v4 --batch-size 4 --max-step 20000 --learning-rate 0.001 --target-network-update 200 --sample-count 50 --env-model EnvModelFreewayManual --vmodel FreewayVNetwork --env-transforms FreewayTransform --save-freq 100 --logdir freeway_td/train17
+
+REM tavuk: random normal, var=50
+REM rm freeway_td/train16 -rf
+REM pipenv run python -B oo_td.py FreewayDeterministic-v4 --batch-size 4 --max-step 20000 --learning-rate 0.001 --target-network-update 200 --sample-count 50 --env-model EnvModelFreewayManual --vmodel FreewayVNetwork --env-transforms FreewayTransform --save-freq 100 --logdir freeway_td/train16
+
+REM tavuk: random normal, var=80
+REM rm freeway_td/train15 -rf
+REM pipenv run python -B oo_td.py FreewayDeterministic-v4 --batch-size 4 --max-step 20000 --learning-rate 0.001 --target-network-update 200 --sample-count 50 --env-model EnvModelFreewayManual --vmodel FreewayVNetwork --env-transforms FreewayTransform --save-freq 100 --logdir freeway_td/train15
+
+REM rm freeway_td/train14 -rf
+REM pipenv run python -B oo_td.py FreewayDeterministic-v4 --batch-size 4 --max-step 20000 --learning-rate 0.001 --target-network-update 200 --sample-count 50 --env-model EnvModelFreewayManual --vmodel FreewayVNetwork --env-transforms FreewayTransform --save-freq 100 --logdir freeway_td/train14
+
 REM 256x256x256x1
-rm freeway_td/train13 -rf
-pipenv run python -B oo_td.py FreewayDeterministic-v4 --batch-size 4 --max-step 20000 --learning-rate 0.001 --target-network-update 200 --sample-count 50 --env-model EnvModelFreewayManual --vmodel FreewayVNetwork --env-transforms FreewayTransform --save-freq 100 --logdir freeway_td/train13
+REM rm freeway_td/train13 -rf
+REM pipenv run python -B oo_td.py FreewayDeterministic-v4 --batch-size 4 --max-step 20000 --learning-rate 0.001 --target-network-update 200 --sample-count 50 --env-model EnvModelFreewayManual --vmodel FreewayVNetwork --env-transforms FreewayTransform --save-freq 100 --logdir freeway_td/train13
 
 REM RMSprop
 REM rm freeway_td/train12 -rf

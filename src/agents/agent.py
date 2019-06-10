@@ -8,6 +8,7 @@ import sys
 
 from utils.summary_writer import SummaryWriter
 from tensorflow.keras.utils import to_categorical
+from utils.viewer import save_image
 
 class Agent(object):
     def __init__(self, action_space, ops):
@@ -317,8 +318,8 @@ class VAgent(Agent, RunnerListener):
         self.verbose = verbose
         self.losses = []
         self.target_network_update = target_network_update
-        if self.ops.mode == "train":
-            self.td_model = TDNetwork(self.env_model.model, self.v_model, self.ops)
+        #if self.ops.mode == "train":
+        self.td_model = TDNetwork(self.env_model.model, self.v_model, self.ops)
 
     def on_step(self, ob, action, next_ob, reward, done):
         self.total_step_count += 1
@@ -331,7 +332,7 @@ class VAgent(Agent, RunnerListener):
                 loss = self.td_model.train(np.array(current_states))
                 self.losses.append(loss)
                 self.update_count += 1
-        if self.total_step_count % self.target_network_update == 0:
+        if self.total_step_count % self.target_network_update == 0 and self.ops.mode == "train":
             self.td_model.v_model_eval.set_weights(self.td_model.v_model.get_weights())
                     
 
@@ -340,6 +341,7 @@ class VAgent(Agent, RunnerListener):
         #print(next_obs)
         state_count = len(self.env_model.model.inputs)
         prediction = np.zeros(self.action_space.n, dtype='float')
+        #print(self.total_step_count)
         for I in range(self.action_space.n):
             #@ersin - normalde rewardi da eklemek gerekir asagidaki gibi, simdilik eskisi gibi birakiyorum
             r = next_obs[self.action_space.n*state_count][0][I]
@@ -347,9 +349,35 @@ class VAgent(Agent, RunnerListener):
             #print(r, done)
             #@ersin buraya kod eklemisim CartPole icin
             #prediction[I] = (r*100 if r<0 else r) + (1-done)*0.99*self.v_model.v_value(next_obs[I])[0]
-            prediction[I] = r + (1-done)*0.99*self.v_model.v_value(next_obs[I*state_count:(I+1)*state_count])[0]
+            next_v_value = self.v_model.v_value(next_obs[I*state_count:(I+1)*state_count])[0]
+            prediction[I] = r + (1-done)*0.99*next_v_value
+            #print(I,r,done,next_v_value,(1-done)*0.99*next_v_value,next_obs[I*state_count+2].flatten(),next_obs[I*state_count+3].flatten())
             #prediction[I] = self.v_model.v_value(next_obs[I])[0]
+            #decoded_output = self.env_model.model_decoder.predict_on_batch([next_obs[I*state_count+1].astype(np.float32), next_obs[I*state_count].astype(np.float32)])
+            #save_image(decoded_output, 1, f'freeway_td/test26/{self.total_step_count}_next_decoded_{I}')
+            
+        #decoded_output = self.env_model.model_decoder.predict_on_batch([observation[1].astype(np.float32), observation[0].astype(np.float32)])
+        #save_image(decoded_output, 1, f'freeway_td/test26/{self.total_step_count}_decoded_observation')
+            
+        #td_error = self.td_model.test(observation)
+        #print(prediction, td_error,observation[2].flatten(),observation[3].flatten())
+        
+        #v_values = np.zeros((210,))
+        #for I in range(210):
+        #    cars = np.zeros((1,160,10))
+        #    tavuks = np.zeros((1,210,3))
+        #    cross_timer = np.zeros((1,7,1))
+        #    carpisma_timer = np.zeros((1,13,1))
+        #    tavuks[0,I,0] = 1
+        #    v_value = self.v_model.v_value([cars, tavuks, cross_timer, carpisma_timer])[0]
+        #    v_values[I] = v_value
+        #    print(I,v_value)
+        #import matplotlib.pyplot as plt
+        #plt.plot(np.array(range(210)),v_values)
+        
         action = np.argmax(prediction)
+        #action = np.random.choice(range(0,self.action_space.n), p=[0.2,0.8,0.0])
+
         #print(prediction)
         #print(action)
         return action		
